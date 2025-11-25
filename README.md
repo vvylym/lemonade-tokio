@@ -83,5 +83,5 @@ cargo run -p load-balancer --release
 curl http://127.0.0.1:4000/health
 
 # Work endpoint through load balancer
-curl "http://127.0.0.1:4000/work?message=test"
+curl "http://127.0.0.1:4000/work"
 ```
