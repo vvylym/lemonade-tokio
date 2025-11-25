@@ -1,5 +1,5 @@
 [workspace]
-members = ["load-balancer", "worker-actix", "worker-axum"]
+members = ["crates/*"]
 resolver = "3"
 
 [profile.release]
