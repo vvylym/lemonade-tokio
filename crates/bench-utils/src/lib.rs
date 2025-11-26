@@ -3,7 +3,7 @@
 //! The worker benches all follow the same pattern:
 //! 1. Spawn the server binary under test with [`start_server`].
 //! 2. Probe the server until it is ready using [`warm_up_server`].
-//! 3. Drive Criterion against one or more HTTP endpoints via [`bench_url`].
+//! 3. Drive Criterion against one or more HTTP endpoints via [`benchmark_server`].
 //! 4. Tear the server back down with [`stop_server`].
 //!
 //! Keeping these helpers here avoids copy‑pasting the bootstrapping logic
@@ -60,7 +60,7 @@ pub fn warm_up_server(url: &str, retries: u8, timeout: u64) -> bool {
 }
 
 /// Register a Criterion benchmark that repeatedly performs a GET request.
-pub fn bench_url(c: &mut Criterion, id: &str, url: &str) {
+pub fn benchmark_server(c: &mut Criterion, id: &str, url: &str) {
     c.bench_function(id, |b| {
         let rt = Runtime::new().unwrap();
         let client = Client::new();
