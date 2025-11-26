@@ -22,7 +22,7 @@ use criterion::Criterion;
 /// Passing `("WORKER_ADDR", "health")` yields `http://127.0.0.1:4000/health`.
 pub fn get_url(env_key: &str, endpoint: &str) -> String {
     let address =   std::env::var(env_key)
-        .expect(&format!("Failed to get {}", env_key));
+        .unwrap_or_else(|_| panic!("Failed to get {}", env_key));
     format!("http://{}/{}", address, endpoint)
 }
 
@@ -31,11 +31,11 @@ pub fn get_url(env_key: &str, endpoint: &str) -> String {
 /// This keeps stdout/stderr quiet so the benchmark output stays clean.
 pub fn start_server(package_name: &str) ->  Child {
     Command::new("cargo")
-        .args(&["run", "-p", package_name, "--release"])
+        .args(["run", "-p", package_name, "--release"])
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
-        .expect(&format!("Failed to start {}", package_name))
+        .unwrap_or_else(|_| panic!("Failed to start {}", package_name))
 }
 
 /// Poll the server until it responds (or we exhaust retries).
@@ -77,5 +77,5 @@ pub fn bench_url(c: &mut Criterion, id: &str, url: &str) {
 
 /// Stop the spawned server that was started via [`start_server`].
 pub fn stop_server(server: &mut Child) {
-    let _ = server.kill().expect("Failed to kill server");
+    let _ = server.kill();
 }
