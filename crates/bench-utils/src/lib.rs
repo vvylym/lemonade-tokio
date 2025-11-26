@@ -11,25 +11,27 @@
 //! import this crate, call into the helpers, and focus on the benchmarked
 //! request/response logic itself.
 
-use std::{process::{Child, Command, Stdio}, time::Duration};
-use reqwest::Client;
-use tokio::{runtime::Runtime, time::sleep};
 use criterion::Criterion;
+use reqwest::Client;
+use std::{
+    process::{Child, Command, Stdio},
+    time::Duration,
+};
+use tokio::{runtime::Runtime, time::sleep};
 
 /// Compose a benchmark URL from an address stored in an env var.
 ///
 /// The benches set (for example) `WORKER_ADDR=127.0.0.1:4000` before running.
 /// Passing `("WORKER_ADDR", "health")` yields `http://127.0.0.1:4000/health`.
 pub fn get_url(env_key: &str, endpoint: &str) -> String {
-    let address =   std::env::var(env_key)
-        .unwrap_or_else(|_| panic!("Failed to get {}", env_key));
+    let address = std::env::var(env_key).unwrap_or_else(|_| panic!("Failed to get {}", env_key));
     format!("http://{}/{}", address, endpoint)
 }
 
 /// Run a server binary in release mode using Cargo.
 ///
 /// This keeps stdout/stderr quiet so the benchmark output stays clean.
-pub fn start_server(package_name: &str) ->  Child {
+pub fn start_server(package_name: &str) -> Child {
     Command::new("cargo")
         .args(["run", "-p", package_name, "--release"])
         .stdout(Stdio::null())
@@ -66,10 +68,7 @@ pub fn benchmark_server(c: &mut Criterion, id: &str, url: &str) {
         let client = Client::new();
         b.iter(|| {
             rt.block_on(async {
-                let _ = client
-                    .get(url)
-                    .send()
-                    .await;
+                let _ = client.get(url).send().await;
             });
         });
     });
