@@ -40,12 +40,15 @@ async fn main() -> Result<()> {
     // Setup graceful shutdown mechanism using broadcast channel
     let (shutdown_sender, _) = broadcast::channel(1);
     let _shutdown_receiver = shutdown_sender.subscribe();
+    
+    // Get the address of the load balancer
+    let address = config.server.to_string();
 
     // Start listening for incoming client connections on all interfaces
-    let listener = TcpListener::bind(&config.address)
+    let listener = TcpListener::bind(&address)
         .await
         .expect("failed to listen to the address");
-    info!("Load balancer listening {}", config.address);
+    info!("Load balancer listening {}", address);
 
     // TODO: Spawn a task to handle health checks
 
