@@ -39,5 +39,5 @@ pub enum Error {
     InvalidEnvVarFormat(&'static str),
     /// Invalid load balancing algorithm
     #[error("Invalid Algorith: {0}")]
-    InvalidAlgorithm(String),
+    InvalidStrategy(String),
 }

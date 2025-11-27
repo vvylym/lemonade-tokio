@@ -1,4 +1,3 @@
-mod algorithms;
 mod backend;
 mod config;
 mod error;
