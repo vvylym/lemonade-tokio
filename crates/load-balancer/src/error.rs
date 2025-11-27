@@ -20,7 +20,7 @@ pub enum Error {
     #[error("Timeout error: {0}")]
     Timeout(String),
     /// Health check error
-    #[error("Healtch check error: {0}")]
+    #[error("Health check error: {0}")]
     HealthCheck(String),
     /// Metrics error
     #[error("Metrics error: {0}")]
@@ -37,7 +37,7 @@ pub enum Error {
     /// Environment variable has invalid format
     #[error("Invalid environment variable: {0}")]
     InvalidEnvVarFormat(&'static str),
-    /// Invalid load balancing algorithm
-    #[error("Invalid Algorith: {0}")]
+    /// Invalid load balancing strategy
+    #[error("Invalid Strategy: {0}")]
     InvalidStrategy(String),
 }

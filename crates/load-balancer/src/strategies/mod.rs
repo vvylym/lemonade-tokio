@@ -27,7 +27,7 @@ pub trait Strategy: Send + Sync + 'static {
 /// Load balancing Strategy module
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum StrategyType {
-    /// Adaptive: Distributes connections using any of the other Strategys for better performance.
+    /// Adaptive: Distributes connections using any of the other Strategies for better performance.
     Adaptive,
     /// Round-robin: Distributes connections evenly by cycling through healthy backends in order.
     RoundRobin,
