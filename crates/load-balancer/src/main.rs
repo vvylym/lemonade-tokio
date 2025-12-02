@@ -1,19 +1,12 @@
-fn main() {
-    println!("Hello, world!");
-}
+//! Load Balancer main module
+//!
+//! This module contains the main function for the load balancer.
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+/// Main function
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Run the load balancer (hidding all the plumbing details)
+    load_balancer::run().await?;
 
-    #[test]
-    fn test_environment_variables() {
-        let test_address = std::env::var("TEST_WORKER_ADDRESS").unwrap();
-        assert_eq!(test_address, "127.0.0.1:0");
-    }
-
-    #[test]
-    fn test_main_return_none() {
-        assert_eq!(main(), ())
-    }
+    Ok(())
 }
