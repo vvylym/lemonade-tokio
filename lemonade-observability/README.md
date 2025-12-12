@@ -16,10 +16,10 @@ The `lemonade-observability` crate provides a unified observability initializati
 
 The observability system is designed to:
 
-1. **Initialize per-service**: Each service's `run()` function initializes its own observability
-2. **Propagate traces**: Distributed tracing across load balancer and workers
-3. **Support OTLP export**: Future integration with OpenTelemetry Collector, Jaeger, Grafana, and Prometheus
-4. **Use standard attributes**: Following OpenTelemetry semantic conventions for interoperability
+1. **Initialize once** at the CLI level (`lemonade/src/lib.rs`)
+2. **Propagate traces** across load balancer and workers
+3. **Support future OTLP export** to Jaeger, Grafana, and Prometheus
+4. **Use standard attributes** following OpenTelemetry semantic conventions
 
 ## Usage
 
@@ -28,15 +28,9 @@ The observability system is designed to:
 ```rust
 use lemonade_observability::init_tracing;
 
-// Initialize in each service's run() function
-// Each service must provide its name and version
-init_tracing("lemonade-load-balancer", "0.1.0")?;
+// Initialize once at application startup
+init_tracing("lemonade-load-balancer")?;
 ```
-
-**Convention**: Each service (load balancer and workers) calls `init_tracing()` in its own `run()` function, ensuring:
-- Independent observability initialization per service
-- Service-specific configuration
-- Consistent service identification in traces
 
 ### Adding Tracing to Your Code
 
@@ -54,8 +48,11 @@ async fn my_function(backend_id: u8) {
 
 - `RUST_LOG` - Log level filter (default: `info`)
   - Format: `RUST_LOG=lemonade_load_balancer=debug,lemonade_worker_axum=trace`
-
-Note: Service name and version are provided as function parameters, not environment variables. This ensures each service explicitly sets its own identity. Logs are output in JSON format for production-ready structured logging.
+- `OTEL_SERVICE_NAME` - Override service name
+- `OTEL_SERVICE_VERSION` - Service version
+- `OTEL_SERVICE_INSTANCE_ID` - Instance identifier
+- `OTEL_DEPLOYMENT_ENVIRONMENT` - Deployment environment (default: `development`)
+- `OTEL_LOG_FORMAT` - Output format: `compact` (default) or `json`
 
 ## OpenTelemetry Integration
 
@@ -69,8 +66,10 @@ The library uses OpenTelemetry SDK 0.31.0 and is architected to easily swap the 
 
 The library uses standard OpenTelemetry attributes:
 
-- `service.name` - Service identifier (provided as parameter)
-- `service.version` - Service version (provided as parameter)
+- `service.name` - Service identifier
+- `service.version` - Service version
+- `service.instance.id` - Instance identifier
+- `deployment.environment` - Environment (development/production)
 - `http.method`, `http.route`, `http.status_code` - HTTP attributes
 - `backend.id`, `backend.addr` - Backend identification
 - `work.delay_ms`, `work.duration_ms` - Work execution metrics

@@ -27,13 +27,12 @@ arc-swap = "1.7.1"
 dashmap = "6.1.0"
 
 ## File watching
-notify = "8.2"
+notify = "6.1"
 
 ## Serialization
 serde = { workspace = true }
 serde_json = { workspace = true }
-serde_yaml = "0.9"
-toml = "0.9"
+toml = "0.8"
 
 ## Environment variables
 dotenv = { workspace = true }
