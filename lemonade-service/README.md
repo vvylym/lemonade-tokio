@@ -21,9 +21,43 @@ The library follows a clean architecture pattern with clear separation of concer
 
 ### Configuration
 
-The service is configured via a `Config` struct that requires:
+The service can be configured via:
+1. **Configuration files** (JSON or TOML)
+2. **Environment variables** (prefixed with `LEMONADE_WORKER_`)
+3. **Programmatic configuration** via the `Config` struct
+
+The `Config` struct requires:
+- `listen_address`: The address to listen on (as a `WorkerAddress`)
 - `service_name`: A unique identifier for the service instance
 - `work_delay`: A `Duration` specifying how long work operations should take
+
+#### Configuration Files
+
+**TOML Example:**
+```toml
+listen_address = "127.0.0.1:4001"
+service_name = "worker-1"
+work_delay_ms = 20
+```
+
+**JSON Example:**
+```json
+{
+  "listen_address": "127.0.0.1:4001",
+  "service_name": "worker-1",
+  "work_delay_ms": 20
+}
+```
+
+Note: `work_delay` in the struct is a `Duration`, but in configuration files it's specified as `work_delay_ms` (milliseconds).
+
+#### Environment Variables
+
+- `LEMONADE_WORKER_LISTEN_ADDRESS` (default: `127.0.0.1:50200`)
+- `LEMONADE_WORKER_SERVICE_NAME` (default: `lemonade-worker`)
+- `LEMONADE_WORKER_WORK_DELAY_MS` (default: `20`)
+
+The `ConfigBuilder` automatically loads from `.env` files if present (via `dotenv`).
 
 ### Health Service
 
@@ -44,15 +78,40 @@ The `WorkService` trait provides:
 
 ## Usage Example
 
+### Using Configuration Builder
+
 ```rust
-use lemonade_service::{service::WorkerServiceImpl, config::Config};
+use lemonade_service::{service::WorkerServiceImpl, config::ConfigBuilder};
+use std::path::PathBuf;
+
+// Load from environment variables
+let config = ConfigBuilder::from_env()?;
+
+// Or load from a configuration file
+let config = ConfigBuilder::from_file(Some(PathBuf::from("worker.toml")))?;
+
+// Create service instance
+let service = WorkerServiceImpl::new(config);
+
+// Perform health check
+let health = service.health_check().await?;
+
+// Execute work
+let work_result = service.work().await?;
+```
+
+### Programmatic Configuration
+
+```rust
+use lemonade_service::{service::WorkerServiceImpl, config::{Config, WorkerAddress}};
 use std::time::Duration;
 
-// Create configuration
-let config = Config {
-    service_name: "worker-1".to_string(),
-    work_delay: Duration::from_millis(100),
-};
+// Create configuration programmatically
+let config = Config::new(
+    WorkerAddress::parse("127.0.0.1:4001")?,
+    "worker-1",
+    Duration::from_millis(100),
+);
 
 // Create service instance
 let service = WorkerServiceImpl::new(config);
@@ -73,7 +132,8 @@ The library uses `thiserror` for error handling with distinct error types:
 ## Dependencies
 
 - `async-trait`: For async trait definitions
-- `serde`: For serialization/deserialization of models
+- `dotenv`: For loading environment variables from `.env` files
+- `serde` / `serde_json` / `toml`: For serialization/deserialization of models and configuration files
 - `thiserror`: For error handling
 
 ## Use Cases

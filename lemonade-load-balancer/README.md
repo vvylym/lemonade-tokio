@@ -113,12 +113,36 @@ The `State` struct manages all runtime state using lock-free concurrent data str
 
 State updates are atomic and lock-free using `ArcSwap`, enabling high-performance concurrent access.
 
-## Usage Example
+## Usage
+
+### Simple Usage
+
+The easiest way to use the load balancer is via the `run()` function:
+
+```rust
+use lemonade_load_balancer::run;
+use std::path::PathBuf;
+
+// Run with a configuration file
+run(Some(PathBuf::from("config.toml"))).await?;
+
+// Or run with environment variables
+run(None).await?;
+```
+
+The `run()` function automatically creates all necessary services and adapters:
+- `NotifyConfigService` for configuration (with file watching if a file is provided)
+- `BackendHealthService` for health checking
+- `AggregatingMetricsService` for metrics collection
+- `TokioProxyService` for TCP proxying
+
+### Advanced Usage
+
+For custom service implementations:
 
 ```rust
 use lemonade_load_balancer::{App, prelude::*};
 use std::sync::Arc;
-use std::net::SocketAddr;
 
 // Create your service implementations
 let config_service: Arc<dyn ConfigService> = /* your implementation */;
@@ -132,12 +156,128 @@ let app = App::new(
     health_service,
     metrics_service,
     proxy_service,
-).await?;
+).await;
 
 app.run().await?;
 ```
 
 ## Configuration
+
+The load balancer can be configured via:
+1. **Configuration files** (JSON or TOML) - supports hot-reload via file watching
+2. **Environment variables** - prefixed with `LEMONADE_LB_`
+
+### Configuration File Format
+
+Configuration files support JSON and TOML formats. When a configuration file is provided, the load balancer watches for changes and automatically reloads the configuration.
+
+**TOML Example:**
+```toml
+[runtime]
+metrics_cap = 1000
+health_cap = 100
+drain_timeout_millis = 5000
+background_timeout_millis = 3000
+accept_timeout_millis = 2000
+
+[proxy]
+listen_address = "127.0.0.1:3000"
+max_connections = 10000
+
+strategy = "round_robin"
+
+[[backends]]
+id = 0
+name = "backend-1"
+address = "127.0.0.1:4001"
+weight = 1
+
+[[backends]]
+id = 1
+name = "backend-2"
+address = "127.0.0.1:4002"
+weight = 2
+
+[health]
+interval_ms = 30000
+timeout_ms = 5000
+
+[metrics]
+interval_ms = 10000
+timeout_ms = 5000
+```
+
+**JSON Example:**
+```json
+{
+  "runtime": {
+    "metrics_cap": 1000,
+    "health_cap": 100,
+    "drain_timeout_millis": 5000,
+    "background_timeout_millis": 3000,
+    "accept_timeout_millis": 2000
+  },
+  "proxy": {
+    "listen_address": "127.0.0.1:3000",
+    "max_connections": 10000
+  },
+  "strategy": "round_robin",
+  "backends": [
+    {
+      "id": 0,
+      "name": "backend-1",
+      "address": "127.0.0.1:4001",
+      "weight": 1
+    },
+    {
+      "id": 1,
+      "name": "backend-2",
+      "address": "127.0.0.1:4002",
+      "weight": 2
+    }
+  ],
+  "health": {
+    "interval_ms": 30000,
+    "timeout_ms": 5000
+  },
+  "metrics": {
+    "interval_ms": 10000,
+    "timeout_ms": 5000
+  }
+}
+```
+
+### Environment Variables
+
+When no configuration file is provided, the load balancer reads configuration from environment variables:
+
+**Runtime Configuration:**
+- `LEMONADE_LB_METRICS_CAP` (default: `100`)
+- `LEMONADE_LB_HEALTH_CAP` (default: `50`)
+- `LEMONADE_LB_DRAIN_TIMEOUT_MS` (default: `5000`)
+- `LEMONADE_LB_BACKGROUND_TIMEOUT_MS` (default: `1000`)
+- `LEMONADE_LB_ACCEPT_TIMEOUT_MS` (default: `2000`)
+
+**Proxy Configuration:**
+- `LEMONADE_LB_LISTEN_ADDRESS` (default: `127.0.0.1:3000`)
+- `LEMONADE_LB_MAX_CONNECTIONS` (optional)
+
+**Strategy:**
+- `LEMONADE_LB_STRATEGY` (default: `round_robin`)
+  - Options: `round_robin`, `least_connections`, `weighted_round_robin`, `fastest_response_time`, `adaptive`
+
+**Backend Configuration:**
+- `LEMONADE_LB_BACKEND_ADDRESSES`: Comma-separated list of backend addresses (e.g., `127.0.0.1:4001,127.0.0.1:4002`)
+
+**Health Configuration:**
+- `LEMONADE_LB_HEALTH_INTERVAL_MS` (default: `30000`)
+- `LEMONADE_LB_HEALTH_TIMEOUT_MS` (default: `30000`)
+
+**Metrics Configuration:**
+- `LEMONADE_LB_METRICS_INTERVAL_MS` (default: `10000`)
+- `LEMONADE_LB_METRICS_TIMEOUT_MS` (default: `10000`)
+
+### Configuration Struct
 
 The load balancer is configured via a `Config` struct:
 
@@ -181,11 +321,25 @@ The library uses `thiserror` for comprehensive error handling:
 - `StrategyError`: Strategy selection errors
 - `Error`: Top-level error enum wrapping all errors
 
+## Configuration Hot-Reload
+
+When a configuration file is provided, the load balancer automatically watches for file changes and reloads the configuration without downtime. Changes to the following are supported:
+
+- Backend list (additions, removals, modifications)
+- Load balancing strategy
+- Health check configuration
+- Metrics configuration
+- Proxy configuration
+
+The configuration service uses file watching with debouncing to avoid excessive reloads during rapid file changes.
+
 ## Dependencies
 
 - `arc-swap`: Lock-free atomic shared references for state management
 - `async-trait`: For async trait definitions
 - `dashmap`: Concurrent hash map for thread-safe data structures
+- `notify`: File system event watching for configuration hot-reload
+- `serde` / `serde_json` / `toml`: Configuration file parsing
 - `thiserror`: For error handling
 - `tokio`: Async runtime for networking and concurrency
 
