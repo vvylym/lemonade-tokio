@@ -1,87 +1,86 @@
-# Load Balancer Performance Benchmarking Project
+# Lemonade Load Balancer
 
-A high-performance, asynchronous TCP load balancer written in Rust with comprehensive benchmarking capabilities. This project compares different load balancing algorithms and worker implementations (Actix Web vs Axum) to evaluate performance characteristics.
-
-## Overview
-
-This project implements a production-ready load balancer with multiple load balancing algorithms and two different HTTP worker implementations. The primary goal is to benchmark and compare:
-
-1. **Load Balancing Algorithms**: Round Robin, Least Connections, Weighted Round Robin, and Adaptive
-2. **Worker Frameworks**: Actix Web and Axum HTTP servers
-3. **Performance Metrics**: Throughput, latency, and resource utilization
-
-
-## Features
-
-### Load Balancer
-- **Multiple Algorithms**: Round Robin, Least Connections, Weighted Round Robin, and Adaptive
-- **Health Checking**: Automatic backend health monitoring with configurable intervals
-- **Connection Tracking**: Real-time connection count tracking per backend
-- **Graceful Shutdown**: Clean shutdown handling for all components
-- **Metrics**: Prometheus-compatible metrics collection
-- **Asynchronous I/O**: Built on Tokio for high-performance, non-blocking operations
-
-### Worker Servers
-- **Actix Web Worker**: Full-featured HTTP server using Actix Web framework
-- **Axum Worker**: Modern HTTP server using Axum framework
-- **Unified Metrics**: Shared metrics library for consistent monitoring
-- **Health Endpoints**: `/health` for health checks
-- **Work Endpoints**: `/work` for simulating processing workloads
-
-### Shared Components
-- **Worker Metrics Library**: Unified metrics interface for all workers
-- **Prometheus Integration**: Built-in Prometheus metrics export
-- **Comprehensive Testing**: Unit tests and integration tests
-
-## Prerequisites
-
-- **Rust**: Version 1.70 or later (Edition 2024)
-- **Cargo**: Latest stable version
-- **Just** (optional): For convenient command execution (`cargo install just`)
+A high-performance, asynchronous TCP load balancer written in Rust with support for multiple load balancing strategies and HTTP worker frameworks.
 
 ## Quick Start
 
-### 1. Clone and Build
+### Prerequisites
+
+- Rust 1.70+ (Edition 2024)
+- Cargo (latest stable)
+
+### Installation
 
 ```bash
-git clone <repository-url>
-cd lb
+git clone https://github.com/vvylym/lemonade-tokio.git
+cd lemonade-tokio
 cargo build --release
 ```
 
-### 2. Start Workers
+### Running Workers
 
-In separate terminals:
-
-```bash
-# Terminal 1: Start Actix worker
-just worker-actix
-# or
-ACTIX_WORKER_PORT=4001 cargo run -p worker-actix --release
-
-# Terminal 2: Start Axum worker
-just worker-axum
-# or
-AXUM_WORKER_PORT=4002 cargo run -p worker-axum --release
-```
-
-### 3. Start Load Balancer
+Start workers using the `lemonade` CLI:
 
 ```bash
-# Terminal 3: Start load balancer
-just load-balancer
-# or
-LB_BACKEND_ADDRESSES=127.0.0.1:4001,127.0.0.1:4002 \
-LB_LOAD_BALANCING_ALGORITHM=round-robin \
-cargo run -p load-balancer --release
+# Actix worker
+cargo run --release -- worker --framework actix \
+  --address 127.0.0.1:4001 --name worker-1 --delay 20
+
+# Axum worker
+cargo run --release -- worker --framework axum \
+  --address 127.0.0.1:4002 --name worker-2 --delay 20
 ```
 
-### 4. Test the Setup
+Supported frameworks: `actix`, `axum`, `hyper`, `rocket`
+
+### Running Load Balancer
 
 ```bash
-# Health check through load balancer
-curl http://127.0.0.1:4000/health
+# Using environment variables
+LEMONADE_LB_LISTEN_ADDRESS=127.0.0.1:3000 \
+LEMONADE_LB_STRATEGY=round_robin \
+LEMONADE_LB_BACKEND_ADDRESSES=127.0.0.1:4001,127.0.0.1:4002 \
+cargo run --release -- load-balancer
 
-# Work endpoint through load balancer
-curl "http://127.0.0.1:4000/work"
+# Using configuration file
+cargo run --release -- load-balancer --config config.toml
 ```
+
+### Testing
+
+```bash
+# Health check
+curl http://127.0.0.1:3000/health
+
+# Work endpoint
+curl http://127.0.0.1:3000/work
+```
+
+## Features
+
+- **5 Load Balancing Strategies**: Round Robin, Least Connections, Weighted Round Robin, Fastest Response Time, Adaptive
+- **4 Worker Frameworks**: Actix Web, Axum, Hyper, Rocket
+- **Production Ready**: Health checking, metrics collection, dynamic configuration, graceful shutdown
+- **Clean Architecture**: Port/Adapter pattern for extensibility
+
+## Documentation
+
+- **[Architecture Documentation](docs/architecture.md)**: Detailed architecture, design decisions, and implementation details
+- **[Load Balancer README](lemonade-load-balancer/README.md)**: Complete load balancer library documentation
+- **[Service README](lemonade-service/README.md)**: Worker service library documentation
+- **[CLI README](lemonade/README.md)**: Command-line interface documentation
+
+## Project Structure
+
+```
+lemonade-tokio/
+├── lemonade/                    # CLI binary
+├── lemonade-load-balancer/      # Load balancer library
+├── lemonade-service/            # Shared service library
+├── lemonade-worker-*/          # Worker framework implementations
+└── docs/                        # Architecture and design documentation
+```
+
+## License
+
+MIT License - see [LICENSE](LICENSE) file for details.

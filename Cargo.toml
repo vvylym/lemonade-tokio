@@ -1,11 +1,54 @@
 [workspace]
-members = ["crates/*"]
+members = [
+    "lemonade",
+    "lemonade-load-balancer", 
+    "lemonade-service", 
+    "lemonade-worker-actix", 
+    "lemonade-worker-axum", 
+    "lemonade-worker-hyper", 
+    "lemonade-worker-rocket"
+]
 resolver = "3"
 
-[profile.release]
-opt-level = 3
-lto = true
-debug = true
+[workspace.dependencies]
+# Serialization and deserialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 
-[profile.bench]
-debug = true
+# Environment variables
+dotenv = "0.15.0"
+
+# Error handling
+thiserror = "2.0"
+
+# Async traits
+async-trait = "0.1"
+
+# Async runtime
+tokio = { version = "1.48", features = ["full"] }
+
+# Tests
+mockall = "0.14.0"
+proptest = "1.9"
+quickcheck = "1.0"
+rstest = "0.26"
+
+# CLI
+clap = { version = "4.5", features = ["derive"] }
+
+# Service implementation
+lemonade-service = { path = "lemonade-service" }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "deny"
+
+[workspace.package]
+authors = ["Guillaume Mpouli <gmpouli@gmail.com"]
+edition = "2024"
+readme = "README.md"
+license = "MIT"
+homepage = ""
+repository = ""
+documentation = ""
+publish = false
