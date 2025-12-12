@@ -1,0 +1,29 @@
+[package]
+name = "lemonade-service"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+readme.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
+publish.workspace = true
+
+[dependencies]
+async-trait = { workspace = true }
+dotenv = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+toml = "0.8"
+thiserror = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true }
+serde_json = { workspace = true }
+proptest = { workspace = true }
+quickcheck = { workspace = true }
+rstest = { workspace = true }
+
+[lints]
+workspace = true

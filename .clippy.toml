@@ -1,0 +1,12 @@
+# Clippy Configuration
+# Enforces Toyota Way quality standards
+
+# Additional lint configuration
+# Cognitive complexity threshold (Toyota Way: ≤15)
+cognitive-complexity-threshold = 15
+
+# Type complexity threshold
+type-complexity-threshold = 150
+
+# Minimum identifier length (allow single chars for math)
+min-ident-chars-threshold = 1

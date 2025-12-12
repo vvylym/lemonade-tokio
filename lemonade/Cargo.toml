@@ -1,0 +1,28 @@
+[package]
+name = "lemonade"
+version = "0.1.0"
+authors.workspace = true
+edition.workspace = true
+readme.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+documentation.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "lemonade"
+path = "src/main.rs"
+
+[dependencies]
+clap = { workspace = true }
+lemonade-service = { workspace = true }
+lemonade-load-balancer = { path = "../lemonade-load-balancer" }
+lemonade-worker-actix = { path = "../lemonade-worker-actix" }
+lemonade-worker-axum = { path = "../lemonade-worker-axum" }
+lemonade-worker-hyper = { path = "../lemonade-worker-hyper" }
+lemonade-worker-rocket = { path = "../lemonade-worker-rocket" }
+tokio = { workspace = true }
+
+[lints]
+workspace = true
