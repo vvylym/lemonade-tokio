@@ -2,6 +2,7 @@
 members = [
     "lemonade",
     "lemonade-load-balancer", 
+    "lemonade-observability",
     "lemonade-service", 
     "lemonade-worker-actix", 
     "lemonade-worker-axum", 
@@ -38,6 +39,17 @@ clap = { version = "4.5", features = ["derive"] }
 
 # Service implementation
 lemonade-service = { path = "lemonade-service" }
+
+# Observability
+tracing = "0.1"
+tracing-opentelemetry = "0.32.0"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "registry", "fmt", "ansi", "json"] }
+opentelemetry = { version = "0.31.0", features = ["trace", "metrics", "logs"] }
+opentelemetry-otlp = { version = "0.31.0", features = ["trace", "metrics", "logs"] }
+opentelemetry_sdk = { version = "0.31.0", features = ["trace", "metrics", "logs", "rt-tokio"] }
+opentelemetry-semantic-conventions = "0.31.0"
+prometheus = "0.14.0"
+opentelemetry-stdout = "0.31.0"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
