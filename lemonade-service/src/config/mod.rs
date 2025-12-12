@@ -5,6 +5,7 @@ use std::time::Duration;
 
 mod builder;
 mod error;
+mod serde_helpers;
 mod worker_address;
 
 pub use builder::ConfigBuilder;
@@ -19,6 +20,7 @@ pub struct Config {
     /// Service name
     service_name: String,
     /// Work delay
+    #[serde(with = "serde_helpers")]
     work_delay: Duration,
 }
 
