@@ -22,17 +22,33 @@ tokio = { workspace = true }
 
 ## Atomic shared references
 arc-swap = "1.7.1"
+
 ## Concurrent hash maps
 dashmap = "6.1.0"
+
 ## File watching
+<<<<<<< HEAD
 notify = "8.2"
 ## Serialization
 serde = { workspace = true }
 serde_json = { workspace = true }
 serde_yaml = "0.9"
 toml = "0.9"
+=======
+notify = "6.1"
+
+## Serialization
+serde = { workspace = true }
+serde_json = { workspace = true }
+toml = "0.8"
+
+>>>>>>> 0b042bc (docs(observability): add comprehensive README for lemonade-observability crate)
 ## Environment variables
 dotenv = { workspace = true }
+
+## Observability
+lemonade-observability = { path = "../lemonade-observability" }
+tracing = { workspace = true }
 
 [dev-dependencies]
 mockall = { workspace = true }
