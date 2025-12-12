@@ -1482,6 +1482,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "lemonade-observability"
+version = "0.1.0"
+dependencies = [
+ "opentelemetry",
+ "opentelemetry-otlp",
+ "opentelemetry-semantic-conventions",
+ "opentelemetry-stdout",
+ "opentelemetry_sdk",
+ "prometheus",
+ "tracing",
+ "tracing-opentelemetry",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "lemonade-service"
 version = "0.1.0"
 dependencies = [
@@ -1492,7 +1507,6 @@ dependencies = [
  "rstest",
  "serde",
  "serde_json",
- "serde_yaml",
  "thiserror 2.0.17",
  "tokio",
  "toml 0.8.23",
@@ -2988,12 +3002,6 @@ name = "toml_write"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5d99f8c9a7727884afe522e9bd5edbfc91a3312b36a77b5fb8926e4c31a41801"
-
-[[package]]
-name = "toml_writer"
-version = "1.0.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df8b2b54733674ad286d16267dcfc7a71ed5c776e4ac7aa3c3e2561f7c637bf2"
 
 [[package]]
 name = "tonic"
