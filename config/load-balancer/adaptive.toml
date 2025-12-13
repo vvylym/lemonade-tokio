@@ -1,3 +1,5 @@
+strategy = "adaptive"
+
 [runtime]
 metrics_cap = 100
 health_cap = 50
@@ -8,8 +10,6 @@ accept_timeout_millis = 2000
 [proxy]
 listen_address = "127.0.0.1:50501"
 max_connections = 1000
-
-strategy = "adaptive"
 
 [[backends]]
 id = 1

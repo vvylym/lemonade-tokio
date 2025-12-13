@@ -1,4 +1,0 @@
-listen_address = "127.0.0.1:50530"
-service_name = "lemonade-worker-3"
-work_delay = 20
-

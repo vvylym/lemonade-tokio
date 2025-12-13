@@ -1,39 +1,67 @@
 # Configuration Files
 
-This directory contains configuration files for both workers and the load balancer. All configuration files use TOML format.
+This directory contains configuration files for both workers and the load balancer. Configuration files support multiple formats: **JSON**, **YAML**, and **TOML**. Each worker and strategy uses a single format to demonstrate all supported formats.
 
 ## Directory Structure
 
 ```
 config/
 ├── worker/                    # Worker configuration files
-│   ├── worker-1.toml
-│   ├── worker-2.toml
-│   ├── worker-3.toml
-│   └── worker-4.toml
+│   ├── worker-1.toml         # TOML format
+│   ├── worker-2.json         # JSON format
+│   ├── worker-3.yaml         # YAML format
+│   └── worker-4.toml         # TOML format
 └── load-balancer/            # Load balancer configuration files
-    ├── adaptive.toml
-    ├── round-robin.toml
-    ├── weighted-round-robin.toml
-    ├── fastest-response-time.toml
-    └── least-connections.toml
+    ├── adaptive.toml         # TOML format
+    ├── round-robin.json      # JSON format
+    ├── weighted-round-robin.yaml  # YAML format
+    ├── fastest-response-time.json  # JSON format
+    └── least-connections.yaml     # YAML format
 ```
+
+## Supported Formats
+
+All configuration files support three formats:
+- **JSON** (`.json`) - JavaScript Object Notation
+- **YAML** (`.yaml` or `.yml`) - YAML Ain't Markup Language
+- **TOML** (`.toml`) - Tom's Obvious Minimal Language
+
+The format is automatically detected based on the file extension.
 
 ## Worker Configuration
 
-Worker configuration files are located in the `worker/` directory. Each worker uses a unique port:
+Worker configuration files are located in the `worker/` directory. Each worker uses a unique port and a different format:
 
-- **worker-1.toml**: Port `50510`
-- **worker-2.toml**: Port `50520`
-- **worker-3.toml**: Port `50530`
-- **worker-4.toml**: Port `50540`
+- **worker-1.toml**: Port `50510` (TOML format)
+- **worker-2.json**: Port `50520` (JSON format)
+- **worker-3.yaml**: Port `50530` (YAML format)
+- **worker-4.toml**: Port `50540` (TOML format)
 
 ### Worker Config Structure
 
+The worker config structure is the same across all formats:
+
+**TOML format:**
 ```toml
 listen_address = "127.0.0.1:50510"
 service_name = "lemonade-worker-1"
 work_delay = 20
+```
+
+**JSON format:**
+```json
+{
+  "listen_address": "127.0.0.1:50520",
+  "service_name": "lemonade-worker-2",
+  "work_delay": 20
+}
+```
+
+**YAML format:**
+```yaml
+listen_address: "127.0.0.1:50530"
+service_name: "lemonade-worker-3"
+work_delay: 20
 ```
 
 - `listen_address`: The socket address where the worker will listen (format: `IP:PORT`)
@@ -43,8 +71,10 @@ work_delay = 20
 ### Using Worker Configs
 
 ```bash
-# Start a worker using a config file
+# Start a worker using a config file (format is auto-detected from extension)
 cargo run --release -- worker --config config/worker/worker-1.toml
+cargo run --release -- worker --config config/worker/worker-2.json
+cargo run --release -- worker --config config/worker/worker-3.yaml
 
 # Or specify the framework explicitly
 cargo run --release -- worker --framework actix --config config/worker/worker-1.toml
@@ -52,17 +82,22 @@ cargo run --release -- worker --framework actix --config config/worker/worker-1.
 
 ## Load Balancer Configuration
 
-Load balancer configuration files are located in the `load-balancer/` directory. Each file represents a different load balancing strategy:
+Load balancer configuration files are located in the `load-balancer/` directory. Each file represents a different load balancing strategy and uses different formats:
 
-- **adaptive.toml**: Adaptive strategy that dynamically selects the best backend
-- **round-robin.toml**: Round-robin strategy that distributes requests evenly
-- **weighted-round-robin.toml**: Weighted round-robin with configurable backend weights
-- **fastest-response-time.toml**: Routes to the backend with the fastest response time
-- **least-connections.toml**: Routes to the backend with the fewest active connections
+- **adaptive.toml**: Adaptive strategy that dynamically selects the best backend (TOML format)
+- **round-robin.json**: Round-robin strategy that distributes requests evenly (JSON format)
+- **weighted-round-robin.yaml**: Weighted round-robin with configurable backend weights (YAML format)
+- **fastest-response-time.json**: Routes to the backend with the fastest response time (JSON format)
+- **least-connections.yaml**: Routes to the backend with the fewest active connections (YAML format)
 
 ### Load Balancer Config Structure
 
+The load balancer config structure is the same across all formats. Here are examples:
+
+**TOML format:**
 ```toml
+strategy = "adaptive"
+
 [runtime]
 metrics_cap = 100
 health_cap = 50
@@ -74,22 +109,54 @@ accept_timeout_millis = 2000
 listen_address = "127.0.0.1:50501"
 max_connections = 1000
 
-strategy = "adaptive"
-
 [[backends]]
 id = 1
 name = "worker-1"
 address = "127.0.0.1:50510"
+```
 
-# ... more backends ...
+**JSON format:**
+```json
+{
+  "strategy": "round_robin",
+  "runtime": {
+    "metrics_cap": 100,
+    "health_cap": 50,
+    "drain_timeout_millis": 5000,
+    "background_timeout_millis": 1000,
+    "accept_timeout_millis": 2000
+  },
+  "proxy": {
+    "listen_address": "127.0.0.1:50501",
+    "max_connections": 1000
+  },
+  "backends": [
+    {
+      "id": 1,
+      "name": "worker-1",
+      "address": "127.0.0.1:50510"
+    }
+  ]
+}
+```
 
-[health]
-interval = 30000  # milliseconds
-timeout = 30000   # milliseconds
-
-[metrics]
-interval = 10000  # milliseconds
-timeout = 10000   # milliseconds
+**YAML format:**
+```yaml
+strategy: "weighted_round_robin"
+runtime:
+  metrics_cap: 100
+  health_cap: 50
+  drain_timeout_millis: 5000
+  background_timeout_millis: 1000
+  accept_timeout_millis: 2000
+proxy:
+  listen_address: "127.0.0.1:50501"
+  max_connections: 1000
+backends:
+  - id: 1
+    name: "worker-1"
+    address: "127.0.0.1:50510"
+    weight: 10
 ```
 
 #### Configuration Sections
@@ -124,40 +191,39 @@ timeout = 10000   # milliseconds
 ### Using Load Balancer Configs
 
 ```bash
-# Start load balancer with a specific strategy
+# Start load balancer with a specific strategy (format is auto-detected from extension)
 cargo run --release -- load-balancer --config config/load-balancer/adaptive.toml
-
-# Or use round-robin
-cargo run --release -- load-balancer --config config/load-balancer/round-robin.toml
+cargo run --release -- load-balancer --config config/load-balancer/round-robin.json
+cargo run --release -- load-balancer --config config/load-balancer/weighted-round-robin.yaml
 ```
 
 ## Complete Example
 
 To run a complete setup with 4 workers and a load balancer:
 
-### Terminal 1: Start Worker 1
+### Terminal 1: Start Worker 1 (TOML)
 ```bash
-cargo run --release -- worker  -f actix --config config/worker/worker-1.toml
+cargo run --release -- worker -f actix --config config/worker/worker-1.toml
 ```
 
-### Terminal 2: Start Worker 2
+### Terminal 2: Start Worker 2 (JSON)
 ```bash
-cargo run --release -- worker -f axum --config config/worker/worker-2.toml
+cargo run --release -- worker -f axum --config config/worker/worker-2.json
 ```
 
-### Terminal 3: Start Worker 3
+### Terminal 3: Start Worker 3 (YAML)
 ```bash
-cargo run --release -- worker -f hyper --config config/worker/worker-3.toml
+cargo run --release -- worker -f hyper --config config/worker/worker-3.yaml
 ```
 
-### Terminal 4: Start Worker 4
+### Terminal 4: Start Worker 4 (TOML)
 ```bash
 cargo run --release -- worker -f rocket --config config/worker/worker-4.toml
 ```
 
-### Terminal 5: Start Load Balancer
+### Terminal 5: Start Load Balancer (JSON)
 ```bash
-cargo run --release -- load-balancer --config config/load-balancer/round-robin.toml
+cargo run --release -- load-balancer --config config/load-balancer/round-robin.json
 ```
 
 ### Testing
@@ -180,4 +246,6 @@ curl http://127.0.0.1:50501/work
 - Backend addresses in load balancer configs must match the `listen_address` in worker configs
 - For `weighted_round_robin` strategy, ensure all backends have a `weight` field defined
 - Health and metrics intervals/timeouts are specified in milliseconds
+- All three formats (JSON, YAML, TOML) are fully supported and tested
+- The format is automatically detected from the file extension (`.json`, `.yaml`, `.yml`, `.toml`)
 

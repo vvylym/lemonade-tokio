@@ -17,11 +17,14 @@ pub enum ConfigError {
     /// TOML parse error
     #[error("TOML parse error: {0}")]
     Toml(#[from] toml::de::Error),
+    /// YAML parse error
+    #[error("YAML parse error: {0}")]
+    Yaml(#[from] serde_yaml::Error),
     /// Notify watcher error
     #[error("Notify watcher error: {0}")]
     Notify(#[from] notify::Error),
     /// Unsupported file format
-    #[error("Unsupported file format: {0}. Supported formats: .json, .toml")]
+    #[error("Unsupported file format: {0}. Supported formats: .json, .toml, .yaml, .yml")]
     UnsupportedFormat(String),
     /// Parse error
     #[error("Parse error: {0}")]
