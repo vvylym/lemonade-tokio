@@ -20,7 +20,7 @@ struct LemonadeCli {
 /// This function parses the CLI arguments and runs the appropriate command.
 pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize observability once at CLI startup
-    lemonade_observability::init_tracing("lemonade-cli")?;
+    lemonade_observability::init_tracing("lemonade", env!("CARGO_PKG_VERSION"))?;
 
     let cli = LemonadeCli::parse();
 
