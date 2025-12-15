@@ -62,6 +62,10 @@ impl ConfigBuilder {
                     let config: Config = toml::from_str(&content)?;
                     Ok(config)
                 }
+                "yaml" | "yml" => {
+                    let config: Config = serde_yaml::from_str(&content)?;
+                    Ok(config)
+                }
                 _ => Err(ConfigError::UnsupportedFormat(
                     path.to_string_lossy().to_string(),
                 )),
