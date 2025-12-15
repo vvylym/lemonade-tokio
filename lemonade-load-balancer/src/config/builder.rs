@@ -63,6 +63,20 @@ impl ConfigBuilder {
                 ))
             })?;
 
+        let config_watch_interval_millis =
+            std::env::var(constants::LB_CONFIG_WATCH_INTERVAL_MS_ENV_KEY)
+                .unwrap_or_else(|_| {
+                    constants::LB_CONFIG_WATCH_INTERVAL_MS_DEFAULT.to_string()
+                })
+                .parse::<u64>()
+                .map_err(|e| {
+                    ConfigError::Parse(format!(
+                        "Invalid {}: {}",
+                        constants::LB_CONFIG_WATCH_INTERVAL_MS_ENV_KEY,
+                        e
+                    ))
+                })?;
+
         // Proxy config
         let listen_address = std::env::var(LB_LISTEN_ADDRESS_ENV_KEY)
             .unwrap_or_else(|_| LB_LISTEN_ADDRESS_DEFAULT.to_string())
@@ -138,12 +152,14 @@ impl ConfigBuilder {
             })?;
 
         Ok(Config {
+            source: ConfigSource::Environment,
             runtime: RuntimeConfig {
                 metrics_cap,
                 health_cap,
                 drain_timeout_millis,
                 background_timeout_millis,
                 accept_timeout_millis,
+                config_watch_interval_millis,
             },
             proxy: ProxyConfig {
                 listen_address,
@@ -180,11 +196,17 @@ impl ConfigBuilder {
 
             match extension.to_lowercase().as_str() {
                 "json" => {
-                    let config: Config = serde_json::from_str(&content)?;
+                    let mut config: Config = serde_json::from_str(&content)?;
+                    config.source = ConfigSource::File;
                     Ok(config)
                 }
                 "toml" => {
-                    let config: Config = toml::from_str(&content)?;
+                    let mut config: Config = toml::from_str(&content)?;
+                    config.source = ConfigSource::File;
+                    Ok(config)
+                }
+                "yaml" | "yml" => {
+                    let config: Config = serde_yaml::from_str(&content)?;
                     Ok(config)
                 }
                 "yaml" | "yml" => {
@@ -218,6 +240,9 @@ mod constants {
     pub const LB_DRAIN_TIMEOUT_MS_DEFAULT: u64 = 5000;
     pub const LB_BACKGROUND_TIMEOUT_MS_DEFAULT: u64 = 1000;
     pub const LB_ACCEPT_TIMEOUT_MS_DEFAULT: u64 = 2000;
+    pub const LB_CONFIG_WATCH_INTERVAL_MS_ENV_KEY: &str =
+        "LEMONADE_LB_CONFIG_WATCH_INTERVAL_MS";
+    pub const LB_CONFIG_WATCH_INTERVAL_MS_DEFAULT: u64 = 1000;
 
     // Proxy config
     pub const LB_LISTEN_ADDRESS_ENV_KEY: &str = "LEMONADE_LB_LISTEN_ADDRESS";

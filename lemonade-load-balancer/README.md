@@ -32,15 +32,30 @@ The `App` struct is the main entry point that:
 - Handles graceful shutdown on Ctrl-C
 - Ensures proper cleanup of all background tasks
 
+### Shared Context
+
+The `Context` struct is the central state coordinator that provides:
+- **Thread-safe configuration access**: Atomic config updates via `ArcSwap`
+- **Dynamic strategy switching**: Hot-swap strategies at runtime
+- **Backend routing**: DashMap-based concurrent route table
+- **Typed communication channels**: Separate channels for config, health, metrics, and proxy events
+- **Migration support**: Graceful backend draining during config changes
+
+All services interact with the shared context rather than maintaining their own state, ensuring consistency and reducing complexity.
+
 ### Configuration Service
 
 The `ConfigService` trait provides:
-- `snapshot()`: Get current configuration
-- `start()`: Begin monitoring for configuration changes
-- `shutdown()`: Stop configuration monitoring
+- `watch_config()`: Monitor for configuration changes and update the context
+
+The service automatically:
+- Watches for file changes (when using file-based config)
+- Migrates backends gracefully (draining old backends before removal)
+- Updates strategy dynamically
+- Notifies other services via config channel
 
 Configuration includes:
-- Runtime settings (timeouts, capacities)
+- Runtime settings (timeouts, capacities, watch intervals)
 - Proxy settings (listen address, max connections)
 - Load balancing strategy
 - Backend definitions
@@ -78,40 +93,47 @@ Strategies can be hot-swapped at runtime without service interruption.
 ### Health Service
 
 The `HealthService` trait provides:
-- `start()`: Begin health checking backends
-- `shutdown()`: Stop health checking
+- `check_backend()`: Perform health check on a specific backend
 
 The health service:
-- Periodically checks backend health
-- Updates health registry with backend status
-- Only routes traffic to healthy backends
-- Supports configurable health check intervals
+- Runs periodic health checks in background tasks
+- Updates backend health atomically (no locks required)
+- Listens for proxy-reported failures for immediate detection
+- Avoids checking backends with active connections (reduces load)
+- Defaults all backends to healthy on startup
+- Supports configurable health check intervals and timeouts
 
 ### Metrics Service
 
 The `MetricsService` trait provides:
-- `snapshot()`: Get current metrics snapshot
-- `start()`: Begin metrics collection
-- `shutdown()`: Stop metrics collection
+- `collect_metrics()`: Collect metrics from backends in background
 
 The metrics service:
-- Tracks response times per backend
-- Monitors connection counts
-- Collects performance data
-- Provides metrics snapshots for strategy decisions
+- Aggregates metrics from backend atomic state
+- Tracks requests, errors, latency per backend
+- Runs periodic collection in background tasks
+- Provides real-time metrics for strategy decisions
+- Supports configurable collection intervals
 
 ### State Management
 
-The `State` struct manages all runtime state using lock-free concurrent data structures:
+The `Context` struct manages all runtime state using lock-free concurrent data structures:
 
-- **RouteTable**: Maps backend IDs to backend metadata
-- **Strategy**: Current load balancing strategy implementation
-- **ConnectionRegistry**: Tracks active connections per backend
-- **HealthRegistry**: Tracks health status per backend
-- **MetricsSnapshot**: Performance metrics per backend
-- **ChannelBundle**: Communication channels for services
+- **Config**: Shared configuration via `ArcSwap` for atomic updates
+- **RouteTable**: `DashMap`-based concurrent map of backend ID → `Backend` state
+- **Strategy**: Current load balancing strategy (swappable at runtime)
+- **ChannelBundle**: Typed channels for inter-service communication
+  - `config_tx/rx`: Configuration change events
+  - `health_tx/rx`: Health check events
+  - `metrics_tx/rx`: Metrics update events  
+  - `connection_tx/rx`: Connection lifecycle events
 
-State updates are atomic and lock-free using `ArcSwap`, enabling high-performance concurrent access.
+The `Backend` struct contains:
+- **Immutable metadata**: ID, name, address, weight
+- **Atomic state**: Health, connections, requests, errors, latency (all lock-free)
+- **Migration status**: Active or Draining
+
+All state updates are atomic and lock-free using `Arc`, `ArcSwap`, `DashMap`, and atomic types (`AtomicBool`, `AtomicU64`, etc.), enabling high-performance concurrent access without locks.
 
 ## Usage
 

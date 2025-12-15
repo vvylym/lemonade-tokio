@@ -19,23 +19,24 @@ async fn least_connections_strategy_pick_backend_with_least_connections_should_s
         create_test_backend(2, None, Some(10u8)),
     ];
     let ctx = create_test_context(backends.clone());
-
-    let health = ctx.health_registry();
-    let routing = ctx.routing_table();
-    for i in 0..routing.len() {
-        health.set_alive(i, true, 1000);
-    }
+    // Backends start healthy by default
 
     // Set connection counts: backend 0 has 5, backend 1 has 2, backend 2 has 10
-    let connections = ctx.connection_registry();
-    for _ in 0..5 {
-        connections.increment(0);
+    let routing = ctx.routing_table();
+    if let Some(backend0) = routing.get(0) {
+        for _ in 0..5 {
+            backend0.increment_connection();
+        }
     }
-    for _ in 0..2 {
-        connections.increment(1);
+    if let Some(backend1) = routing.get(1) {
+        for _ in 0..2 {
+            backend1.increment_connection();
+        }
     }
-    for _ in 0..10 {
-        connections.increment(2);
+    if let Some(backend2) = routing.get(2) {
+        for _ in 0..10 {
+            backend2.increment_connection();
+        }
     }
 
     let backend = strategy
@@ -55,14 +56,15 @@ async fn least_connections_strategy_pick_backend_with_equal_connections_should_s
         create_test_backend(1, None, Some(10u8)),
     ];
     let ctx = create_test_context(backends.clone());
+    // Backends start healthy by default
 
-    let health = ctx.health_registry();
-    health.set_alive(0, true, 1000);
-    health.set_alive(1, true, 1000);
-
-    let connections = ctx.connection_registry();
-    connections.increment(0);
-    connections.increment(1);
+    let routing = ctx.routing_table();
+    if let Some(backend0) = routing.get(0) {
+        backend0.increment_connection();
+    }
+    if let Some(backend1) = routing.get(1) {
+        backend1.increment_connection();
+    }
 
     let backend = strategy
         .pick_backend(ctx)
@@ -78,7 +80,11 @@ async fn least_connections_strategy_pick_backend_with_empty_healthy_should_fail(
     let strategy = LeastConnectionsStrategy::default();
     let backends = vec![create_test_backend(0, None, Some(10u8))];
     let ctx = create_test_context(backends);
-    // All backends are unhealthy by default
+    // Mark backend as unhealthy
+    let routing = ctx.routing_table();
+    if let Some(backend) = routing.get(0) {
+        backend.set_health(false, 1000);
+    }
 
     let result = strategy.pick_backend(ctx).await;
     assert!(result.is_err());
@@ -96,11 +102,7 @@ async fn least_connections_strategy_pick_backend_with_zero_connections_should_su
         create_test_backend(1, None, Some(10u8)),
     ];
     let ctx = create_test_context(backends.clone());
-
-    let health = ctx.health_registry();
-    health.set_alive(0, true, 1000);
-    health.set_alive(1, true, 1000);
-    // No connections set (all zero)
+    // Backends start healthy by default, no connections set (all zero)
 
     let backend = strategy
         .pick_backend(ctx)

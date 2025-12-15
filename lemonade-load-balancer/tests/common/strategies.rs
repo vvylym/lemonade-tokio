@@ -10,11 +10,15 @@ use std::sync::Arc;
 /// Given: a context
 /// When: setting all backends as healthy
 /// Then: all backends in routing table are marked as alive
+/// Note: Backends start healthy by default, so this is mainly for ensuring state
 pub fn set_all_backends_healthy(ctx: &Arc<Context>) {
-    let health = ctx.health_registry();
     let routing = ctx.routing_table();
-    for i in 0..routing.len() {
-        health.set_alive(i, true, 1000);
+    let now_ms = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as u64;
+    for backend in routing.all_backends() {
+        backend.set_health(true, now_ms);
     }
 }
 
@@ -24,12 +28,15 @@ pub fn set_all_backends_healthy(ctx: &Arc<Context>) {
 /// When: setting backends as healthy
 /// Then: specified backends are marked as alive
 pub fn set_backends_healthy_by_id(ctx: &Arc<Context>, backend_ids: &[u8]) {
-    let health = ctx.health_registry();
     let routing = ctx.routing_table();
+    let now_ms = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as u64;
 
     for &backend_id in backend_ids {
-        if let Some(index) = routing.find_index(backend_id) {
-            health.set_alive(index, true, 1000);
+        if let Some(backend) = routing.get(backend_id) {
+            backend.set_health(true, now_ms);
         }
     }
 }

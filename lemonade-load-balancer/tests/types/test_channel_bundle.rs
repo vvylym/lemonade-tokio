@@ -2,9 +2,9 @@
 //!
 //! This module tests:
 //! - ChannelBundle creation with various capacities
-//! - Getter methods (metrics_cap, health_cap, senders)
+//! - Getter methods (config_tx, health_tx, metrics_tx, etc.)
 //! - Sender functionality and cloning
-//! - Trait implementations (Debug, Clone)
+//! - Receiver access
 
 use lemonade_load_balancer::prelude::*;
 
@@ -14,38 +14,21 @@ use lemonade_load_balancer::prelude::*;
 /// When: creating a new ChannelBundle
 /// Then: bundle is created successfully
 #[rstest::rstest]
-#[case(100, 50)]
-#[case(1, 1)]
-#[case(1000, 500)]
+#[case(100, 50, 100, 50)]
+#[case(1, 1, 1, 1)]
+#[case(1000, 500, 1000, 500)]
 #[test]
-fn test_new(#[case] metrics_cap: usize, #[case] health_cap: usize) {
-    let (bundle, metrics_rx, health_rx) = ChannelBundle::new(metrics_cap, health_cap);
-    assert_eq!(bundle.metrics_cap(), metrics_cap);
-    assert_eq!(bundle.health_cap(), health_cap);
-    assert!(!metrics_rx.is_closed());
-    assert!(!health_rx.is_closed());
-}
-
-/// Test metrics capacity getter
-///
-/// Given: a ChannelBundle
-/// When: getting metrics capacity
-/// Then: capacity is correct
-#[test]
-fn test_metrics_cap() {
-    let (bundle, _, _) = ChannelBundle::new(100, 50);
-    assert_eq!(bundle.metrics_cap(), 100);
-}
-
-/// Test health capacity getter
-///
-/// Given: a ChannelBundle
-/// When: getting health capacity
-/// Then: capacity is correct
-#[test]
-fn test_health_cap() {
-    let (bundle, _, _) = ChannelBundle::new(100, 50);
-    assert_eq!(bundle.health_cap(), 50);
+fn test_new(
+    #[case] metrics_cap: usize,
+    #[case] health_cap: usize,
+    #[case] connection_cap: usize,
+    #[case] backend_failure_cap: usize,
+) {
+    let bundle =
+        ChannelBundle::new(metrics_cap, health_cap, connection_cap, backend_failure_cap);
+    // Note: capacities are not directly accessible, but we can test senders work
+    // Verify config sender works (receiver_count is always >= 0)
+    let _ = bundle.config_tx();
 }
 
 /// Test metrics sender functionality
@@ -55,8 +38,11 @@ fn test_health_cap() {
 /// Then: sender works and event is received
 #[test]
 fn test_metrics_sender() {
-    let (bundle, mut metrics_rx, _) = ChannelBundle::new(100, 50);
-    let sender = bundle.metrics_sender();
+    let bundle = ChannelBundle::new(100, 50, 100, 50);
+    let mut metrics_rx = bundle
+        .metrics_rx()
+        .expect("Metrics receiver should be available");
+    let sender = bundle.metrics_tx();
     let event = MetricsEvent::ConnectionOpened {
         backend_id: 1,
         at_micros: 1000,
@@ -84,8 +70,11 @@ fn test_metrics_sender() {
 /// Then: sender works and event is received
 #[test]
 fn test_health_sender() {
-    let (bundle, _, mut health_rx) = ChannelBundle::new(100, 50);
-    let sender = bundle.health_sender();
+    let bundle = ChannelBundle::new(100, 50, 100, 50);
+    let mut health_rx = bundle
+        .health_rx()
+        .expect("Health receiver should be available");
+    let sender = bundle.health_tx();
     let event = HealthEvent::BackendHealthy {
         backend_id: 2,
         rtt_micros: 500,
@@ -106,6 +95,93 @@ fn test_health_sender() {
     }
 }
 
+/// Test backend failure sender functionality
+///
+/// Given: a ChannelBundle
+/// When: getting backend failure sender and sending an event
+/// Then: sender works and event is received
+#[test]
+fn test_backend_failure_sender() {
+    let bundle = ChannelBundle::new(100, 50, 100, 50);
+    let mut failure_rx = bundle
+        .backend_failure_rx()
+        .expect("Backend failure receiver should be available");
+    let sender = bundle.backend_failure_tx();
+    let event = BackendFailureEvent::ConnectionRefused { backend_id: 1 };
+    let send_result = sender.try_send(event.clone());
+    assert!(send_result.is_ok());
+    let received = failure_rx.try_recv();
+    assert!(received.is_ok());
+    match received.expect("Failed to receive event") {
+        BackendFailureEvent::ConnectionRefused { backend_id } => {
+            assert_eq!(backend_id, 1);
+        }
+        _ => panic!("Unexpected event type"),
+    }
+}
+
+/// Test connection sender functionality
+///
+/// Given: a ChannelBundle
+/// When: getting connection sender and sending an event
+/// Then: sender works and event is received
+#[test]
+fn test_connection_sender() {
+    let bundle = ChannelBundle::new(100, 50, 100, 50);
+    let mut connection_rx = bundle
+        .connection_rx()
+        .expect("Connection receiver should be available");
+    let sender = bundle.connection_tx();
+    let event = ConnectionEvent::Opened { backend_id: 1 };
+    let send_result = sender.try_send(event.clone());
+    assert!(send_result.is_ok());
+    let received = connection_rx.try_recv();
+    assert!(received.is_ok());
+    match received.expect("Failed to receive event") {
+        ConnectionEvent::Opened { backend_id } => {
+            assert_eq!(backend_id, 1);
+        }
+        _ => panic!("Unexpected event type"),
+    }
+}
+
+/// Test config sender (broadcast)
+///
+/// Given: a ChannelBundle
+/// When: getting config sender and sending an event
+/// Then: sender works and event is received
+#[test]
+fn test_config_sender() {
+    let bundle = ChannelBundle::new(100, 50, 100, 50);
+    let mut config_rx = bundle.config_rx();
+    let sender = bundle.config_tx();
+    let event = ConfigEvent::Migrated;
+    let send_result = sender.send(event);
+    assert!(send_result.is_ok());
+    let received = config_rx.try_recv();
+    assert!(received.is_ok());
+    match received.expect("Failed to receive event") {
+        ConfigEvent::Migrated => {}
+        _ => panic!("Unexpected event type"),
+    }
+}
+
+/// Test shutdown sender (broadcast)
+///
+/// Given: a ChannelBundle
+/// When: getting shutdown sender and sending signal
+/// Then: signal is received
+#[test]
+fn test_shutdown_sender() {
+    let bundle = ChannelBundle::new(100, 50, 100, 50);
+    let mut shutdown_rx = bundle.shutdown_rx();
+    let sender = bundle.shutdown_tx();
+    let send_result = sender.send(());
+    assert!(send_result.is_ok());
+    let received = shutdown_rx.try_recv();
+    assert!(received.is_ok());
+}
+
 /// Test metrics sender cloning
 ///
 /// Given: a ChannelBundle
@@ -113,9 +189,12 @@ fn test_health_sender() {
 /// Then: both senders work independently
 #[test]
 fn test_metrics_sender_clone() {
-    let (bundle, mut metrics_rx, _) = ChannelBundle::new(100, 50);
-    let sender1 = bundle.metrics_sender();
-    let sender2 = bundle.metrics_sender();
+    let bundle = ChannelBundle::new(100, 50, 100, 50);
+    let mut metrics_rx = bundle
+        .metrics_rx()
+        .expect("Metrics receiver should be available");
+    let sender1 = bundle.metrics_tx();
+    let sender2 = bundle.metrics_tx();
     let event1 = MetricsEvent::FlushSnapshot;
     let event2 = MetricsEvent::RequestCompleted {
         backend_id: 1,
@@ -135,9 +214,12 @@ fn test_metrics_sender_clone() {
 /// Then: both senders work independently
 #[test]
 fn test_health_sender_clone() {
-    let (bundle, _, mut health_rx) = ChannelBundle::new(100, 50);
-    let sender1 = bundle.health_sender();
-    let sender2 = bundle.health_sender();
+    let bundle = ChannelBundle::new(100, 50, 100, 50);
+    let mut health_rx = bundle
+        .health_rx()
+        .expect("Health receiver should be available");
+    let sender1 = bundle.health_tx();
+    let sender2 = bundle.health_tx();
     let event1 = HealthEvent::CheckBackend { backend_id: 1 };
     let event2 = HealthEvent::BackendUnhealthy {
         backend_id: 2,
@@ -156,34 +238,9 @@ fn test_health_sender_clone() {
 /// Then: debug string is not empty
 #[test]
 fn test_debug() {
-    let (bundle, _, _) = ChannelBundle::new(100, 50);
+    let bundle = ChannelBundle::new(100, 50, 100, 50);
     let debug_str = format!("{:?}", bundle);
     assert!(!debug_str.is_empty());
-}
-
-/// Test Clone trait implementation
-///
-/// Given: a ChannelBundle
-/// When: cloning the bundle
-/// Then: cloned bundle has same capacities
-#[test]
-fn test_clone() {
-    let (bundle, _, _) = ChannelBundle::new(100, 50);
-    let cloned = bundle.clone();
-    assert_eq!(bundle.metrics_cap(), cloned.metrics_cap());
-    assert_eq!(bundle.health_cap(), cloned.health_cap());
-}
-
-/// Test with minimum capacity
-///
-/// Given: minimum capacities (mpsc requires > 0)
-/// When: creating a new ChannelBundle
-/// Then: bundle is created successfully
-#[test]
-fn test_with_minimum_capacity() {
-    let (bundle, _, _) = ChannelBundle::new(1, 1);
-    assert_eq!(bundle.metrics_cap(), 1);
-    assert_eq!(bundle.health_cap(), 1);
 }
 
 /// Test metrics sender sends all event types
@@ -193,8 +250,11 @@ fn test_with_minimum_capacity() {
 /// Then: all events can be sent and received
 #[test]
 fn test_metrics_sender_all_event_types() {
-    let (bundle, mut metrics_rx, _) = ChannelBundle::new(100, 50);
-    let sender = bundle.metrics_sender();
+    let bundle = ChannelBundle::new(100, 50, 100, 50);
+    let mut metrics_rx = bundle
+        .metrics_rx()
+        .expect("Metrics receiver should be available");
+    let sender = bundle.metrics_tx();
     let events = vec![
         MetricsEvent::ConnectionOpened {
             backend_id: 1,
@@ -233,8 +293,11 @@ fn test_metrics_sender_all_event_types() {
 /// Then: all events can be sent and received
 #[test]
 fn test_health_sender_all_event_types() {
-    let (bundle, _, mut health_rx) = ChannelBundle::new(100, 50);
-    let sender = bundle.health_sender();
+    let bundle = ChannelBundle::new(100, 50, 100, 50);
+    let mut health_rx = bundle
+        .health_rx()
+        .expect("Health receiver should be available");
+    let sender = bundle.health_tx();
     let events = vec![
         HealthEvent::CheckBackend { backend_id: 1 },
         HealthEvent::BackendHealthy {
@@ -258,4 +321,18 @@ fn test_health_sender_all_event_types() {
     for _ in 0..5 {
         assert!(health_rx.try_recv().is_ok());
     }
+}
+
+/// Test receiver can only be taken once
+///
+/// Given: a ChannelBundle
+/// When: taking receiver multiple times
+/// Then: only first call succeeds
+#[test]
+fn test_receiver_single_consumer() {
+    let bundle = ChannelBundle::new(100, 50, 100, 50);
+    let rx1 = bundle.metrics_rx();
+    assert!(rx1.is_some());
+    let rx2 = bundle.metrics_rx();
+    assert!(rx2.is_none(), "Receiver should only be available once");
 }

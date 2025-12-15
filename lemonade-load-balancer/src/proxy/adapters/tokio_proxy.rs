@@ -1,26 +1,27 @@
 //! Tokio implementation of ProxyService
 //!
 //! Uses tokio for async connection acceptance and bidirectional proxying
+//! Runs on main thread for maximum performance (hot path)
 
 use crate::prelude::*;
 use crate::proxy::error::ProxyError;
-use crate::proxy::models::ProxyConfig;
+use crate::proxy::models::{ConnectionEvent, ProxyConfig};
 use crate::proxy::port::ProxyService;
 use arc_swap::ArcSwap;
 use async_trait::async_trait;
+use std::io;
 use std::sync::Arc;
 use std::time::Instant;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
-use tokio::sync::Notify as TokioNotify;
+use tokio::task::JoinSet;
+use tracing::instrument;
 
 /// Tokio-based proxy service implementation
 #[derive(Clone)]
 pub struct TokioProxyService {
     /// Proxy configuration (reference to global config's proxy slice)
     config: Arc<ArcSwap<ProxyConfig>>,
-    /// Shutdown notification
-    shutdown: Arc<TokioNotify>,
 }
 
 impl TokioProxyService {
@@ -32,57 +33,74 @@ impl TokioProxyService {
     /// # Returns
     /// * `Ok(Self)` if service was created successfully
     pub fn new(config: Arc<ArcSwap<ProxyConfig>>) -> Result<Self, ProxyError> {
-        Ok(Self {
-            config,
-            shutdown: Arc::new(TokioNotify::new()),
-        })
+        Ok(Self { config })
     }
 
     /// Handle a single proxy connection
+    #[instrument(
+        skip(self, client_stream, backend, ctx),
+        fields(
+            service.name = "lemonade-load-balancer",
+            backend.id = %backend.id(),
+            backend.name = %backend.name().unwrap_or("unknown"),
+            backend.addr = %backend.address()
+        )
+    )]
     async fn handle_connection(
         &self,
         client_stream: TcpStream,
-        backend: BackendMeta,
+        backend: Arc<Backend>,
         ctx: Arc<Context>,
     ) -> Result<(), ProxyError> {
-        let backend_id = *backend.id();
-        let backend_addr = *backend.address().as_ref();
-        let routing = ctx.routing_table();
-        let backend_idx = routing.find_index(backend_id).ok_or_else(|| {
-            ProxyError::Unexpected("Backend not found in routing table".to_string())
-        })?;
+        let backend_id = backend.id();
+        let backend_addr = backend.address();
 
-        // Track connection
-        let connections = ctx.connection_registry();
-        connections.increment(backend_idx);
+        // Increment connection counter
+        backend.increment_connection();
 
-        // Send ConnectionOpened event
-        let metrics_tx = ctx.channel_bundle().metrics_sender();
+        // Send connection opened event (non-blocking)
+        let _ = ctx
+            .channels()
+            .connection_tx()
+            .try_send(ConnectionEvent::Opened { backend_id });
+
         let connection_start = Instant::now();
-        let _ = metrics_tx
-            .send(MetricsEvent::ConnectionOpened {
-                backend_id,
-                at_micros: connection_start.elapsed().as_micros() as u64,
-            })
-            .await;
 
         // Connect to backend
         let backend_stream = match TcpStream::connect(backend_addr).await {
             Ok(stream) => stream,
             Err(e) => {
-                connections.decrement(backend_idx);
-                let _ = metrics_tx
-                    .send(MetricsEvent::RequestFailed {
-                        backend_id,
-                        latency_micros: connection_start.elapsed().as_micros() as u64,
-                        error_class: MetricsErrorClass::ConnectionRefused,
-                    })
-                    .await;
+                backend.decrement_connection();
+                ctx.notify_connection_closed();
+
+                // ALERT HEALTH SERVICE - send failure event
+                let failure_event = match e.kind() {
+                    io::ErrorKind::ConnectionRefused => {
+                        BackendFailureEvent::ConnectionRefused { backend_id }
+                    }
+                    io::ErrorKind::TimedOut => {
+                        BackendFailureEvent::Timeout { backend_id }
+                    }
+                    _ => BackendFailureEvent::BackendClosed { backend_id },
+                };
+
+                let _ = ctx.channels().backend_failure_tx().try_send(failure_event);
+
+                // Send metrics event
+                let _ =
+                    ctx.channels()
+                        .metrics_tx()
+                        .try_send(MetricsEvent::RequestFailed {
+                            backend_id,
+                            latency_micros: connection_start.elapsed().as_micros() as u64,
+                            error_class: MetricsErrorClass::ConnectionRefused,
+                        });
+
                 return Err(ProxyError::Io(e));
             }
         };
 
-        // Proxy data bidirectionally using copy
+        // Proxy data bidirectionally
         let (mut client_read, mut client_write) = tokio::io::split(client_stream);
         let (mut backend_read, mut backend_write) = tokio::io::split(backend_stream);
 
@@ -129,21 +147,26 @@ impl TokioProxyService {
         let bytes_received = bytes_received.unwrap_or(0);
         let duration_micros = connection_start.elapsed().as_micros() as u64;
 
-        // Decrement connection count
-        connections.decrement(backend_idx);
+        // Decrement connection counter
+        backend.decrement_connection();
+        ctx.notify_connection_closed();
 
-        // Send ConnectionClosed event
-        let _ = metrics_tx
-            .send(MetricsEvent::ConnectionClosed {
+        // Send connection closed event
+        let _ = ctx
+            .channels()
+            .connection_tx()
+            .try_send(ConnectionEvent::Closed { backend_id });
+
+        // Send metrics event
+        let _ = ctx
+            .channels()
+            .metrics_tx()
+            .try_send(MetricsEvent::ConnectionClosed {
                 backend_id,
                 duration_micros,
                 bytes_in: bytes_received,
                 bytes_out: bytes_sent,
-            })
-            .await;
-
-        // Notify connection closed for drain logic
-        ctx.notify_connection_closed();
+            });
 
         Ok(())
     }
@@ -151,64 +174,153 @@ impl TokioProxyService {
 
 #[async_trait]
 impl ProxyService for TokioProxyService {
-    async fn accept_connections(&self, ctx: &Arc<Context>) -> Result<(), ProxyError> {
-        let config = self.config.load_full();
-        let listener = TcpListener::bind(config.listen_address).await?;
-        let _local_addr = listener.local_addr()?;
+    #[tracing::instrument(skip(self, ctx), fields(service.name = "lemonade-load-balancer", service.type = "proxy"))]
+    async fn accept_connections(&self, ctx: Arc<Context>) -> Result<(), ProxyError> {
+        let mut shutdown_rx = ctx.channels().shutdown_rx();
+        let mut config_rx = ctx.channels().config_rx();
 
-        // Note: If config.listen_address.port() was 0, the OS assigned a port
-        // The actual bound address is in _local_addr, but we can't update config as it's read-only
+        // Get initial listen address
+        let mut current_addr = ctx.config().proxy.listen_address;
+        let mut listener = TcpListener::bind(current_addr).await?;
+        tracing::info!("Proxy listening on {}", current_addr);
 
-        let shutdown_clone = self.shutdown.clone();
-        let service_clone = self.clone();
-        let ctx_clone = ctx.clone();
+        // Track active connection tasks
+        let mut conn_tasks = JoinSet::new();
 
         loop {
             tokio::select! {
-                _ = shutdown_clone.notified() => {
+                // Shutdown signal
+                _ = shutdown_rx.recv() => {
+                    tracing::info!("Proxy received shutdown signal");
                     break;
                 }
-                result = listener.accept() => {
-                    match result {
-                        Ok((client_stream, _)) => {
-                            // Check max_connections limit
-                            let connections = ctx_clone.connection_registry();
-                            let config = self.config.load_full();
-                            if let Some(max_conns) = config.max_connections
-                                && connections.total() >= max_conns as usize
-                            {
-                                // Reject connection
-                                drop(client_stream);
-                                continue;
+
+                // Config change (listen address change)
+                result = config_rx.recv() => {
+                    if let Ok(ConfigEvent::ListenAddressChanged(new_addr)) = result && new_addr != current_addr {
+                        tracing::info!(
+                            "Listen address changed: {} -> {}",
+                            current_addr,
+                            new_addr
+                        );
+
+                        // Stop accepting on old listener (drop it)
+                        // Active connections continue via spawned tasks
+                        drop(listener);
+
+                        // Bind to new address
+                        match TcpListener::bind(new_addr).await {
+                            Ok(new_listener) => {
+                                listener = new_listener;
+                                current_addr = new_addr;
+                                tracing::info!("Now accepting on {}", new_addr);
+                            }
+                            Err(e) => {
+                                tracing::error!("Failed to bind to {}: {}", new_addr, e);
+                                // Re-bind to old address
+                                match TcpListener::bind(current_addr).await {
+                                    Ok(old_listener) => {
+                                        listener = old_listener;
+                                        tracing::warn!("Reverted to {}", current_addr);
+                                    }
+                                    Err(e2) => {
+                                        tracing::error!("Failed to revert to old address: {}", e2);
+                                        return Err(ProxyError::Io(e2));
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Accept new connection
+                accept_result = listener.accept() => {
+                    match accept_result {
+                        Ok((stream, peer_addr)) => {
+                            // Check max connections
+                            let config = self.config.load();
+                            if let Some(max_conns) = config.max_connections {
+                                let routing = ctx.routing_table();
+                                let total_connections: usize = routing
+                                    .all_backends()
+                                    .iter()
+                                    .map(|b| b.active_connections())
+                                    .sum();
+                                if total_connections >= max_conns as usize {
+                                    tracing::warn!(
+                                        "Max connections reached ({}), rejecting connection from {}",
+                                        max_conns,
+                                        peer_addr
+                                    );
+                                    drop(stream);
+                                    continue;
+                                }
                             }
 
                             // Pick backend using strategy
-                            let strategy = ctx_clone.strategy();
-                            match strategy.pick_backend(ctx_clone.clone()).await {
-                                Ok(backend) => {
-                                    // Spawn proxy task
-                                    let service = service_clone.clone();
-                                    let ctx_task = ctx_clone.clone();
-                                    tokio::spawn(async move {
-                                        if let Err(e) = service.handle_connection(client_stream, backend, ctx_task).await {
-                                            eprintln!("Proxy connection error: {}", e);
-                                        }
-                                    });
+                            let strategy = ctx.strategy();
+                            let backend_meta = match strategy.pick_backend(ctx.clone()).await {
+                                Ok(b) => b,
+                                Err(e) => {
+                                    tracing::warn!("No backend available: {}", e);
+                                    drop(stream);
+                                    continue;
                                 }
-                                Err(_) => {
-                                    // No backend available, close connection
-                                    drop(client_stream);
+                            };
+
+                            // Get backend from route table
+                            let routing = ctx.routing_table();
+                            let backend = match routing.get(*backend_meta.id()) {
+                                Some(b) => b,
+                                None => {
+                                    tracing::warn!("Backend {} not found in route table", backend_meta.id());
+                                    drop(stream);
+                                    continue;
                                 }
+                            };
+
+                            // Check if backend accepts new connections (not draining and healthy)
+                            if !backend.can_accept_new_connections() {
+                                tracing::debug!(
+                                    "Backend {} is draining or unhealthy, cannot accept new connection",
+                                    backend.id()
+                                );
+                                drop(stream);
+                                continue;
                             }
+
+                            // Spawn connection handler (clone ctx before move)
+                            let svc_clone = self.clone();
+                            let ctx_clone = ctx.clone();
+                            conn_tasks.spawn(async move {
+                                let _ = svc_clone.handle_connection(stream, backend, ctx_clone).await;
+                            });
                         }
                         Err(e) => {
-                            eprintln!("Failed to accept connection: {}", e);
+                            tracing::error!("Accept error: {}", e);
+                            // Brief pause to avoid tight loop on errors
+                            tokio::time::sleep(Duration::from_millis(100)).await;
                         }
                     }
+                }
+
+                // Clean up finished connection tasks
+                Some(_) = conn_tasks.join_next() => {
+                    // Connection finished, task cleaned up
                 }
             }
         }
 
+        // Shutdown: wait for active connections to finish
+        tracing::info!(
+            "Waiting for {} active connections to complete",
+            conn_tasks.len()
+        );
+        while (conn_tasks.join_next().await).is_some() {
+            // Drain all active connection tasks
+        }
+
+        tracing::info!("All proxy connections closed");
         Ok(())
     }
 }

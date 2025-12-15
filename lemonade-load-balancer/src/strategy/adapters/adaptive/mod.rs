@@ -88,21 +88,23 @@ impl StrategyService for AdaptiveStrategy {
         &self,
         ctx: Arc<Context>,
     ) -> Result<BackendMeta, StrategyError> {
-        let healthy_backends = ctx.healthy_backends();
+        let routing = ctx.routing_table();
+        let healthy_backends = routing.healthy_backends();
 
         // Early exit optimization: single backend
         if healthy_backends.len() == 1 {
-            return Ok(healthy_backends[0].clone());
+            let backend = &healthy_backends[0];
+            return Ok(BackendMeta::new(
+                backend.id(),
+                backend.name(),
+                backend.address(),
+                backend.weight(),
+            ));
         }
 
         if healthy_backends.is_empty() {
             return Err(StrategyError::NoBackendAvailable);
         }
-
-        // Load all registries once (single read optimization)
-        let connection_registry = ctx.connection_registry();
-        let metrics_snapshot = ctx.metrics_snapshot();
-        let routing_table = ctx.routing_table();
 
         // Get current timestamp for cache TTL validation
         let current_timestamp_ms = std::time::SystemTime::now()
@@ -111,15 +113,16 @@ impl StrategyService for AdaptiveStrategy {
             .as_millis() as u64;
 
         // Prepare scoring context with normalized maximum values
-        let scoring_context = prepare_scoring_context(
-            &healthy_backends,
-            connection_registry,
-            metrics_snapshot,
-            routing_table,
-        );
+        let scoring_context = prepare_scoring_context(&healthy_backends, routing.clone());
+
+        // Convert to BackendMeta for scoring (temporary compatibility)
+        let backend_metas: Vec<BackendMeta> = healthy_backends
+            .iter()
+            .map(|b| BackendMeta::new(b.id(), b.name(), b.address(), b.weight()))
+            .collect();
 
         // Check cache for all backends in parallel
-        let cached_scores: Vec<(BackendId, Option<f64>)> = healthy_backends
+        let cached_scores: Vec<(BackendId, Option<f64>)> = backend_metas
             .iter()
             .map(|backend| {
                 (
@@ -131,7 +134,7 @@ impl StrategyService for AdaptiveStrategy {
 
         // Compute scores for all backends (uses cache when available)
         let scored_backends = compute_all_backend_scores(
-            &healthy_backends,
+            &backend_metas,
             &scoring_context,
             &cached_scores,
             &self.cache,
@@ -160,7 +163,6 @@ mod tests {
     use crate::health::models::HealthConfig;
     use crate::metrics::models::MetricsConfig;
     use crate::proxy::models::ProxyConfig;
-    use crate::types::BackendMetrics;
     use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
     fn create_test_backend(id: u8, weight: Option<u8>) -> BackendMeta {
@@ -170,13 +172,20 @@ mod tests {
     }
 
     fn create_test_config(backends: Vec<BackendMeta>) -> Config {
+        // Convert BackendMeta to BackendConfig
+        let backend_configs: Vec<BackendConfig> = backends
+            .iter()
+            .map(|meta| BackendConfig::from(meta.clone()))
+            .collect();
         Config {
+            source: ConfigSource::Environment,
             runtime: RuntimeConfig {
                 metrics_cap: 100,
                 health_cap: 50,
                 drain_timeout_millis: 5000,
                 background_timeout_millis: 1000,
                 accept_timeout_millis: 2000,
+                config_watch_interval_millis: 1000,
             },
             proxy: ProxyConfig {
                 listen_address: SocketAddr::new(
@@ -186,7 +195,7 @@ mod tests {
                 max_connections: Some(1000),
             },
             strategy: Strategy::Adaptive,
-            backends: backends.clone(),
+            backends: backend_configs,
             health: HealthConfig {
                 interval: Duration::from_secs(5),
                 timeout: Duration::from_secs(1),
@@ -262,11 +271,8 @@ mod tests {
         let strategy = AdaptiveStrategy::default();
         let backends = vec![create_test_backend(0, Some(1))];
         let config = create_test_config(backends.clone());
-        let ctx = Arc::new(Context::new(&config).expect("Failed to create context"));
-        ctx.set_backends(backends).expect("Failed to set backends");
-
-        let health = ctx.health_registry();
-        health.set_alive(0, true, 1000);
+        let ctx = Arc::new(Context::new(config).expect("Failed to create context"));
+        // Backends start healthy by default
 
         // When: picking backend
         let backend = strategy
@@ -284,8 +290,13 @@ mod tests {
         let strategy = AdaptiveStrategy::default();
         let backends = vec![create_test_backend(0, Some(1))];
         let config = create_test_config(backends);
-        let ctx = Arc::new(Context::new(&config).expect("Failed to create context"));
-        // All backends are unhealthy by default
+        let ctx = Arc::new(Context::new(config).expect("Failed to create context"));
+
+        // Mark backend as unhealthy
+        let routing = ctx.routing_table();
+        if let Some(backend) = routing.get(0) {
+            backend.set_health(false, 1000);
+        }
 
         // When: picking backend
         let result = strategy.pick_backend(ctx).await;
@@ -307,14 +318,8 @@ mod tests {
             create_test_backend(1, Some(2)),
         ];
         let config = create_test_config(backends.clone());
-        let ctx = Arc::new(Context::new(&config).expect("Failed to create context"));
-        ctx.set_backends(backends).expect("Failed to set backends");
-
-        let health = ctx.health_registry();
-        let routing = ctx.routing_table();
-        for i in 0..routing.len() {
-            health.set_alive(i, true, 1000);
-        }
+        let ctx = Arc::new(Context::new(config).expect("Failed to create context"));
+        // Backends start healthy by default
 
         // When: picking backend
         let backend = strategy
@@ -335,33 +340,19 @@ mod tests {
             create_test_backend(1, Some(1)),
         ];
         let config = create_test_config(backends.clone());
-        let ctx = Arc::new(Context::new(&config).expect("Failed to create context"));
-        ctx.set_backends(backends).expect("Failed to set backends");
-
-        let health = ctx.health_registry();
-        health.set_alive(0, true, 1000);
-        health.set_alive(1, true, 1000);
+        let ctx = Arc::new(Context::new(config).expect("Failed to create context"));
+        // Backends start healthy by default
 
         // Set metrics: backend 0 has lower latency
-        let metrics = ctx.metrics_snapshot();
-        metrics.update(
-            0,
-            BackendMetrics {
-                avg_latency_ms: 10.0,
-                p95_latency_ms: 15.0,
-                error_rate: 0.0,
-                last_updated_ms: 1000,
-            },
-        );
-        metrics.update(
-            1,
-            BackendMetrics {
-                avg_latency_ms: 20.0,
-                p95_latency_ms: 25.0,
-                error_rate: 0.0,
-                last_updated_ms: 1000,
-            },
-        );
+        let routing = ctx.routing_table();
+        if let Some(backend0) = routing.get(0) {
+            backend0.record_request(10, false); // 10ms latency
+            backend0.record_request(10, false);
+        }
+        if let Some(backend1) = routing.get(1) {
+            backend1.record_request(20, false); // 20ms latency
+            backend1.record_request(20, false);
+        }
 
         // When: picking backend
         let backend = strategy
@@ -383,18 +374,18 @@ mod tests {
             create_test_backend(1, Some(1)),
         ];
         let config = create_test_config(backends.clone());
-        let ctx = Arc::new(Context::new(&config).expect("Failed to create context"));
-        ctx.set_backends(backends).expect("Failed to set backends");
-
-        let health = ctx.health_registry();
-        health.set_alive(0, true, 1000);
-        health.set_alive(1, true, 1000);
+        let ctx = Arc::new(Context::new(config).expect("Failed to create context"));
+        // Backends start healthy by default
 
         // Set connection counts: backend 0 has fewer connections
-        let connections = ctx.connection_registry();
-        connections.increment(0);
-        connections.increment(1);
-        connections.increment(1);
+        let routing = ctx.routing_table();
+        if let Some(backend0) = routing.get(0) {
+            backend0.increment_connection();
+        }
+        if let Some(backend1) = routing.get(1) {
+            backend1.increment_connection();
+            backend1.increment_connection();
+        }
 
         // When: picking backend
         let backend = strategy

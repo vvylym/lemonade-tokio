@@ -47,4 +47,6 @@ pub const NO_VARIANCE_PENALTY: f64 = 1.0;
 pub const PERFECT_ERROR_RATE: f32 = 0.0;
 
 /// Invalid backend index (used when backend not found)
+/// Invalid backend index constant (deprecated, kept for compatibility)
+#[allow(dead_code)]
 pub const INVALID_BACKEND_INDEX: usize = usize::MAX;

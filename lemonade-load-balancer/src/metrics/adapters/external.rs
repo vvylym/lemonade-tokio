@@ -8,15 +8,12 @@ use crate::prelude::*;
 use arc_swap::ArcSwap;
 use async_trait::async_trait;
 use std::sync::Arc;
-use tokio::sync::Notify as TokioNotify;
 
 /// External metrics service implementation
 pub struct ExternalMetricsService {
     /// Metrics configuration (reference to global config's metrics slice)
     #[allow(dead_code)]
     config: Arc<ArcSwap<MetricsConfig>>,
-    /// Shutdown notification
-    shutdown: Arc<TokioNotify>,
 }
 
 impl ExternalMetricsService {
@@ -28,27 +25,16 @@ impl ExternalMetricsService {
     /// # Returns
     /// * `Ok(Self)` if service was created successfully
     pub fn new(config: Arc<ArcSwap<MetricsConfig>>) -> Result<Self, MetricsError> {
-        Ok(Self {
-            config,
-            shutdown: Arc::new(TokioNotify::new()),
-        })
+        Ok(Self { config })
     }
 }
 
 #[async_trait]
 impl MetricsService for ExternalMetricsService {
-    async fn snapshot(&self) -> Result<MetricsSnapshot, MetricsError> {
-        // TODO: Fetch from external sources (Prometheus/OTLP)
-        Ok(MetricsSnapshot::default())
-    }
-
-    async fn start(&self, _ctx: Arc<Context>) -> Result<(), MetricsError> {
-        // TODO: Implement periodic fetching from external sources
-        Ok(())
-    }
-
-    async fn shutdown(&self) -> Result<(), MetricsError> {
-        self.shutdown.notify_waiters();
-        Ok(())
+    async fn collect_metrics(&self, ctx: Arc<Context>) {
+        // TODO: Implement periodic fetching from external sources (Prometheus/OTLP)
+        // For now, just wait for shutdown
+        let mut shutdown_rx = ctx.channels().shutdown_rx();
+        let _ = shutdown_rx.recv().await;
     }
 }

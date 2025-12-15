@@ -16,7 +16,8 @@ impl StrategyService for WeightedRoundRobinStrategy {
         &self,
         ctx: Arc<Context>,
     ) -> Result<BackendMeta, StrategyError> {
-        let healthy = ctx.healthy_backends();
+        let routing = ctx.routing_table();
+        let healthy = routing.healthy_backends();
 
         if healthy.is_empty() {
             return Err(StrategyError::NoBackendAvailable);
@@ -42,11 +43,22 @@ impl StrategyService for WeightedRoundRobinStrategy {
         for (i, backend) in healthy.iter().enumerate() {
             weight_sum += weights[i];
             if target < weight_sum {
-                return Ok(backend.clone());
+                return Ok(BackendMeta::new(
+                    backend.id(),
+                    backend.name(),
+                    backend.address(),
+                    backend.weight(),
+                ));
             }
         }
 
         // Fallback to first backend (should never reach here)
-        Ok(healthy[0].clone())
+        let backend = &healthy[0];
+        Ok(BackendMeta::new(
+            backend.id(),
+            backend.name(),
+            backend.address(),
+            backend.weight(),
+        ))
     }
 }

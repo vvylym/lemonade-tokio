@@ -9,9 +9,6 @@ pub(crate) mod proxy;
 pub(crate) mod strategy;
 pub(crate) mod types;
 
-#[macro_use]
-mod helpers;
-
 pub mod error;
 pub mod prelude;
 pub use app::App;
@@ -29,26 +26,38 @@ use std::{path::PathBuf, sync::Arc};
 /// * `Err(Box<dyn std::error::Error>)` if there was an error
 #[tracing::instrument(skip_all, fields(service.name = "lemonade-load-balancer", config.file = ?config_file))]
 pub async fn run(config_file: Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
-    // Create static config service (uses provided config, no file watching)
-    let config_service: Arc<dyn ConfigService> =
-        Arc::new(NotifyConfigService::new(config_file)?);
+    // Initialize tracing with load balancer service name and package version
+    lemonade_observability::init_tracing(
+        "lemonade-load-balancer",
+        env!("CARGO_PKG_VERSION"),
+    )?;
 
-    let config = config_service.snapshot();
+    // Load config
+    let config = ConfigBuilder::from_file(config_file.as_deref())?;
 
-    // Extract service-specific configs and wrap in ArcSwap
+    // Create context from config (context-first initialization)
+    let ctx = Arc::new(Context::new(config.clone())?);
+
+    // Create services (they don't need initial config, they get it from context)
+    let config_service: Arc<dyn ConfigService> = if config.source == ConfigSource::File {
+        Arc::new(NotifyConfigService::new(config_file)?)
+    } else {
+        Arc::new(StaticConfigService::new())
+    };
+
     let health_config = Arc::new(ArcSwap::from_pointee(config.health.clone()));
-    let metrics_config = Arc::new(ArcSwap::from_pointee(config.metrics.clone()));
-    let proxy_config = Arc::new(ArcSwap::from_pointee(config.proxy.clone()));
-
-    // Create services using the adapters
     let health_service: Arc<dyn HealthService> =
         Arc::new(BackendHealthService::new(health_config)?);
+
+    let metrics_config = Arc::new(ArcSwap::from_pointee(config.metrics.clone()));
     let metrics_service: Arc<dyn MetricsService> =
         Arc::new(AggregatingMetricsService::new(metrics_config)?);
+
+    let proxy_config = Arc::new(ArcSwap::from_pointee(config.proxy.clone()));
     let proxy_service: Arc<dyn ProxyService> =
         Arc::new(TokioProxyService::new(proxy_config)?);
 
-    // Create and run the app
+    // Create and run app
     let app = App::new(
         config_service,
         health_service,
@@ -56,7 +65,7 @@ pub async fn run(config_file: Option<PathBuf>) -> Result<(), Box<dyn std::error:
         proxy_service,
     )
     .await;
-    app.run().await?;
+    app.run(ctx).await?;
 
     Ok(())
 }

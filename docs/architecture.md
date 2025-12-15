@@ -115,64 +115,80 @@ Each service receives a shared `Arc<Context>` for accessing and updating shared 
 
 ### ConfigService
 
-**Purpose**: Manages configuration and supports hot-reload.
+**Purpose**: Monitors configuration changes and triggers context updates.
 
 **Interface**:
 ```rust
-trait ConfigService {
-    fn snapshot(&self) -> Config;
-    async fn start(&self, ctx: Arc<Context>) -> Result<(), ConfigError>;
-    async fn shutdown(&self) -> Result<(), ConfigError>;
+#[async_trait]
+trait ConfigService: Send + Sync {
+    async fn watch_config(&self, ctx: &Arc<Context>) -> Result<()>;
 }
 ```
 
 **Responsibilities**:
-- Provide initial configuration snapshot
-- Monitor configuration changes (file watching, environment variables)
-- Update the shared context when configuration changes
-- Coordinate strategy updates when backends or strategy type changes
+- Watch for configuration changes (file watching for File source, no-op for Environment source)
+- Call `ctx.migrate()` when config changes
+- Emit `ConfigEvent::Migrated` or `ConfigEvent::ListenAddressChanged` to notify services
+- Debounce rapid file changes
 
-**Implementation**: `NotifyConfigService` uses the `notify` crate for file watching with debouncing.
+**Implementation**: `NotifyConfigService` uses the `notify` crate for file watching.
+
+**Key Features**:
+- Automatic source detection (File vs Environment) from Config
+- Hot-reload with configurable watch interval
+- Graceful backend migration via `Context::migrate()`
 
 ### HealthService
 
-**Purpose**: Monitors backend health status.
+**Purpose**: Performs health checks on individual backends.
 
 **Interface**:
 ```rust
-trait HealthService {
-    async fn start(&self, ctx: Arc<Context>) -> Result<(), HealthError>;
-    async fn shutdown(&self) -> Result<(), HealthError>;
+#[async_trait]
+trait HealthService: Send + Sync {
+    async fn check_backend(&self, backend: Arc<Backend>, timeout: Duration) -> Result<()>;
 }
 ```
 
 **Responsibilities**:
-- Periodically check backend health
-- Update the health registry in the shared context
-- Only mark backends as healthy if they respond within the timeout
+- Perform single backend health check (TCP connection attempt)
+- Update backend's atomic health state: `backend.set_health(alive)`
+- Update last health check timestamp
+- Run periodic checks in background tasks
 
-**Implementation**: `BackendHealthService` performs TCP health checks at configurable intervals.
+**Implementation**: `BackendHealthService` performs TCP health checks.
+
+**Key Features**:
+- Defaults backends to healthy on startup
+- Avoids checking backends with active connections (reduces load)
+- Listens for `BackendFailureEvent` from proxy for immediate detection
+- Configurable interval and timeout per config
 
 ### MetricsService
 
-**Purpose**: Collects and aggregates performance metrics.
+**Purpose**: Aggregates metrics from backend atomic state.
 
 **Interface**:
 ```rust
-trait MetricsService {
-    async fn snapshot(&self) -> Result<MetricsSnapshot, MetricsError>;
-    async fn start(&self, ctx: Arc<Context>) -> Result<(), MetricsError>;
-    async fn shutdown(&self) -> Result<(), MetricsError>;
+#[async_trait]
+trait MetricsService: Send + Sync {
+    async fn collect_metrics(&self, ctx: &Arc<Context>) -> Result<()>;
 }
 ```
 
 **Responsibilities**:
-- Collect metrics events from the proxy service
-- Aggregate metrics (response times, connection counts)
-- Provide metrics snapshots for strategy decisions
-- Update the metrics registry in the shared context
+- Run periodic background collection
+- Read atomic metrics from each `Backend` instance
+- Aggregate backend-level metrics for observability
+- Prepare snapshots for strategy decisions
 
-**Implementation**: `AggregatingMetricsService` aggregates metrics from events sent via channels.
+**Implementation**: `AggregatingMetricsService` reads from `Backend` atomic fields.
+
+**Key Features**:
+- Lock-free metric reading via atomics
+- Each backend tracks: requests, errors, latency, connections
+- Metrics updated directly by proxy service on per-request basis
+- Configurable collection interval
 
 ### ProxyService
 
@@ -226,193 +242,186 @@ The `Context` struct is the central shared state that all services access. It us
 
 ```rust
 pub struct Context {
-    // State registries (ArcSwap for lock-free updates)
-    route_table: ArcSwap<RouteTable>,
+    // Shared configuration (ArcSwap for lock-free updates)
+    config: ArcSwap<Config>,
+    
+    // Concurrent backend routing table (DashMap for lock-free concurrent access)
+    route_table: Arc<RouteTable>,  // DashMap<BackendId, Arc<Backend>>
+    
+    // Current strategy (swappable at runtime)
     strategy: ArcSwap<Arc<dyn StrategyService>>,
-    connections: ArcSwap<ConnectionRegistry>,
-    health: ArcSwap<HealthRegistry>,
-    metrics: ArcSwap<MetricsSnapshot>,
-    channels: ArcSwap<ChannelBundle>,
     
-    // Channel version tracking
-    channel_version_tx: watch::Sender<u64>,
+    // Typed communication channels
+    channels: Arc<ChannelBundle>,
     
-    // Connection draining
-    notify: Notify,
-    
-    // Timeout configurations
-    drain_timeout_duration: Duration,
-    background_handle_timeout: Duration,
-    accept_handle_timeout: Duration,
-    
-    // Event receivers
-    metrics_rx: ArcSwap<MpscReceiver<MetricsEvent>>,
-    health_rx: ArcSwap<MpscReceiver<HealthEvent>>,
+    // Connection draining coordination
+    notify: Arc<Notify>,
     
     // Shutdown coordination
-    shutdown_tx: BroadcastSender<()>,
+    shutdown_tx: broadcast::Sender<()>,
+}
+```
+
+### Backend Structure
+
+Each backend in the `RouteTable` contains both metadata and atomic runtime state:
+
+```rust
+pub struct Backend {
+    // Immutable metadata
+    id: BackendId,
+    name: Option<String>,
+    address: SocketAddr,
+    weight: Option<u8>,
+    
+    // Atomic runtime state (lock-free)
+    alive: AtomicBool,                // Health status
+    last_health_check_ms: AtomicU64,  // Last health check timestamp
+    active_connections: AtomicUsize,   // Current connection count
+    total_requests: AtomicU64,        // Total requests handled
+    total_errors: AtomicU64,          // Total errors encountered
+    total_latency_ms: AtomicU64,      // Cumulative latency
+    last_metrics_update_ms: AtomicU64,// Last metrics update
+    status: AtomicU8,                 // Active(0) or Draining(1)
 }
 ```
 
 ### Context Components Explained
 
-#### 1. RouteTable (`route_table`)
+#### 1. Config (`config`)
 
-**Purpose**: Maps backend IDs to backend metadata.
+**Purpose**: Shared configuration accessible to all services.
 
-**Design Choice**: Uses `ArcSwap` for lock-free atomic updates when backends are added/removed.
+**Design Choice**: Uses `ArcSwap` for atomic config updates without locks.
 
 **Operations**:
-- Lookup by ID or index
+- Load current config snapshot
+- Update config atomically (triggers migration)
+- Access config fields (timeouts, intervals, etc.)
+
+**Key Features**: 
+- Config source tracking (File vs Environment)
+- Drain timeout configuration
+- Hot-reload support via file watching
+
+#### 2. RouteTable (`route_table`)
+
+**Purpose**: Maps backend IDs to `Backend` instances with unified state.
+
+**Design Choice**: Uses `DashMap` for lock-free concurrent access - multiple services can read/write simultaneously without blocking.
+
+**Operations**:
+- Lookup backend by ID: `O(1)` concurrent access
+- Iterate over all backends
 - Filter healthy backends
-- Update when configuration changes
+- Add/remove backends during migration
 
-**Improvement Suggestion**: Consider using a concurrent hash map (like `DashMap`) if frequent lookups by name are needed.
+**Key Advantages**:
+- No separate health/connection/metrics registries needed
+- Atomic operations on individual backend state
+- True concurrent access without read locks
 
-#### 2. Strategy (`strategy`)
+#### 3. Strategy (`strategy`)
 
 **Purpose**: Current load balancing strategy implementation.
 
-**Design Choice**: Wrapped in `Arc<Arc<dyn StrategyService>>` to allow hot-swapping strategies without blocking.
+**Design Choice**: Wrapped in `ArcSwap<Arc<dyn StrategyService>>` to allow hot-swapping strategies without blocking.
 
 **Operations**:
 - Load current strategy
 - Swap to new strategy (e.g., when config changes)
+- Execute `pick_backend()` for request routing
 
-**Improvement Suggestion**: Consider strategy versioning to ensure consistency during updates.
+**Key Features**:
+- Runtime strategy switching
+- No service restart required
+- Strategies access backends via Context
 
-#### 3. ConnectionRegistry (`connections`)
+#### 4. ChannelBundle (`channels`)
 
-**Purpose**: Tracks active connection counts per backend.
+**Purpose**: Typed communication channels for inter-service communication.
 
-**Design Choice**: Uses atomic operations for lock-free connection counting.
+**Design Choice**: Separate channels for each event type ensures type safety and allows services to only receive events they need.
 
-**Operations**:
-- Increment/decrement connection counts
-- Get current counts for strategy decisions
-- Migrate counts when backends are reconfigured
+**Channels**:
+- `config_tx/rx`: `broadcast::Receiver<ConfigEvent>` - Config change notifications
+- `health_tx/rx`: `broadcast::Receiver<HealthEvent>` - Health check results
+- `metrics_tx/rx`: `mpsc::Receiver<MetricsEvent>` - Metrics collection (unused in current implementation)
+- `connection_tx/rx`: `broadcast::Receiver<ConnectionEvent>` - Connection lifecycle events
+- `failure_tx/rx`: `mpsc::Receiver<BackendFailureEvent>` - Proxy-reported failures
 
-**Improvement Suggestion**: Add connection metadata (e.g., connection age) for more sophisticated strategies.
+**Key Features**:
+- Type-safe event passing
+- Services subscribe only to needed channels
+- Broadcast for one-to-many, mpsc for point-to-point
 
-#### 4. HealthRegistry (`health`)
+#### 5. Connection Draining (`notify`)
 
-**Purpose**: Tracks health status of each backend.
+**Purpose**: Coordinates graceful connection draining during backend migration and shutdown.
 
-**Design Choice**: Uses atomic flags for lock-free health status updates.
-
-**Operations**:
-- Update health status
-- Check if backend is healthy
-- Migrate health status when backends are reconfigured
-
-**Improvement Suggestion**: Add health history (e.g., consecutive failures) for better failure detection.
-
-#### 5. MetricsSnapshot (`metrics`)
-
-**Purpose**: Current aggregated metrics per backend.
-
-**Design Choice**: Snapshot pattern - metrics are aggregated periodically and stored as a snapshot.
+**Design Choice**: Uses `tokio::sync::Notify` for lightweight wake-up notifications.
 
 **Operations**:
-- Update metrics snapshot
-- Access metrics for strategy decisions
-- Reset/clear metrics
+- `wait_for_drain()`: Async wait for active connections to complete
+- `notify_one()`: Wake up one waiter when connection closes
+- Used during backend removal and shutdown
 
-**Improvement Suggestion**: Consider time-series metrics storage for historical analysis and better adaptive strategies.
+**Key Features**:
+- Zero allocation for notify
+- Efficient for infrequent wake-ups
+- Works with drain timeout
 
-#### 6. ChannelBundle (`channels`)
-
-**Purpose**: Communication channels for services to send events.
-
-**Design Choice**: Uses `ArcSwap` to allow hot-reloading channels when configuration changes.
-
-**Operations**:
-- Send metrics events
-- Send health events
-- Update channels (with version tracking)
-
-**Improvement Suggestion**: Consider bounded channels with backpressure handling for overload scenarios.
-
-#### 7. Channel Version Tracking (`channel_version_tx`)
-
-**Purpose**: Notifies services when channels are updated.
-
-**Design Choice**: Uses `watch` channel for lightweight version notifications.
-
-**Operations**:
-- Subscribe to version changes
-- Notify on channel updates
-
-**Improvement Suggestion**: Add version-based event filtering to prevent processing stale events.
-
-#### 8. Connection Draining (`notify`)
-
-**Purpose**: Coordinates graceful connection draining during shutdown.
-
-**Design Choice**: Uses `Notify` for lightweight wake-up notifications.
-
-**Operations**:
-- Wait for connections to close
-- Notify when connection closes
-
-**Improvement Suggestion**: Add connection timeout tracking to force-close stuck connections.
-
-#### 9. Timeout Configurations
-
-**Purpose**: Configurable timeouts for different operations.
-
-**Design Choice**: Stored directly in context for easy access.
-
-**Operations**:
-- Get timeout values
-- Update timeouts (requires `&mut self`)
-
-**Improvement Suggestion**: Make timeouts updatable without requiring `&mut` (e.g., use `ArcSwap<Duration>`).
-
-#### 10. Event Receivers (`metrics_rx`, `health_rx`)
-
-**Purpose**: Services consume events from these receivers.
-
-**Design Choice**: Uses `ArcSwap` to allow hot-reloading receivers when channels change.
-
-**Operations**:
-- Clone receiver for service consumption
-- Update receiver when channels change
-
-**Improvement Suggestion**: Consider using `broadcast` channels for multiple consumers if needed.
-
-#### 11. Shutdown Coordination (`shutdown_tx`)
+#### 6. Shutdown Coordination (`shutdown_tx`)
 
 **Purpose**: Broadcasts shutdown signal to all services.
 
 **Design Choice**: Uses `broadcast` channel for one-to-many notification.
 
 **Operations**:
-- Send shutdown signal
-- Subscribe to shutdown notifications
+- Send shutdown signal: `shutdown_tx.send(())`
+- Subscribe: `shutdown_tx.subscribe()`
+- All services listen for shutdown
 
-**Improvement Suggestion**: Add shutdown phases (e.g., stop accepting, drain connections, cleanup) for more controlled shutdown.
+**Shutdown Sequence**:
+1. App receives Ctrl-C (SIGINT)
+2. Broadcasts shutdown signal
+3. Services stop background tasks
+4. Active connections drain (with timeout)
+5. Cleanup and exit
 
 ### Context Access Patterns
 
-The context provides three types of access methods:
+The context provides several types of access methods:
 
-1. **Loaders**: Return `Arc<T>` for read access (lock-free)
+1. **Configuration Access**: Lock-free config reading
    ```rust
-   pub fn routing_table(&self) -> Arc<RouteTable>
-   pub fn strategy(&self) -> Arc<Arc<dyn StrategyService>>
+   pub fn config(&self) -> Arc<Config>
+   pub fn set_config(&self, config: Config)  // Triggers migration
+   pub fn drain_timeout(&self) -> Duration
    ```
 
-2. **Swappers**: Update state atomically (lock-free)
+2. **Backend Access**: Concurrent via DashMap
    ```rust
-   pub fn set_routing_table(&self, rt: Arc<RouteTable>)
+   pub fn get_backend(&self, id: BackendId) -> Option<Arc<Backend>>
+   pub fn get_all_backends(&self) -> Vec<Arc<Backend>>
+   pub fn healthy_backends(&self) -> Vec<Arc<Backend>>
+   ```
+
+3. **Strategy Access**: Lock-free strategy loading/swapping
+   ```rust
+   pub fn strategy(&self) -> Arc<dyn StrategyService>
    pub fn set_strategy(&self, strategy: Arc<dyn StrategyService>)
    ```
 
-3. **Getters**: Return owned or cloned values
+4. **Channel Access**: Direct channel access
    ```rust
-   pub fn healthy_backends(&self) -> Vec<BackendMeta>
-   pub fn drain_timeout(&self) -> Duration
+   pub fn channels(&self) -> &Arc<ChannelBundle>
+   pub fn config_rx(&self) -> broadcast::Receiver<ConfigEvent>
+   ```
+
+5. **Migration**: Coordinated state updates
+   ```rust
+   pub async fn migrate(&self, new_config: Config) -> Result<()>
    ```
 
 ## Design Decisions

@@ -6,11 +6,11 @@ use crate::prelude::*;
 #[cfg_attr(test, mockall::automock)]
 #[async_trait]
 pub trait HealthService: Send + Sync + 'static {
-    /// Start the health service
-    async fn start(&self, ctx: Arc<Context>) -> Result<(), HealthError>;
-
-    /// Shutdown the health service
-    async fn shutdown(&self) -> Result<(), HealthError>;
+    /// Check backend health periodically (loops until shutdown)
+    /// - Performs periodic health checks via TCP connection
+    /// - Listens for BackendFailureEvent from proxy for immediate alerting
+    /// - Respects backend load (skips health checks on busy backends)
+    async fn check_health(&self, ctx: Arc<Context>);
 }
 
 #[cfg(test)]
@@ -19,11 +19,6 @@ mockall::mock! {
 
     #[async_trait]
     impl HealthService for MockHealthServiceSuccess {
-        async fn start(&self, _ctx: Arc<Context>) -> Result<(), HealthError> {
-            Ok(())
-        }
-        async fn shutdown(&self) -> Result<(), HealthError> {
-            Ok(())
-        }
+        async fn check_health(&self, _ctx: Arc<Context>) {}
     }
 }

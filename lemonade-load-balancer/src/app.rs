@@ -1,10 +1,8 @@
 //! App module
 //!
+
 use crate::error::Result;
 use crate::prelude::*;
-use crate::{
-    drain_and_run_handles_with_timeout, spawn_background_handle, wait_for_shutdown,
-};
 
 /// App struct
 pub struct App {
@@ -35,35 +33,62 @@ impl App {
     }
 
     /// Run the app
-    pub async fn run(&self) -> Result<()> {
-        // create state
-        let ctx = Arc::new(Context::new(&self.config_service.snapshot())?);
+    #[tracing::instrument(skip(self, ctx), fields(service.name = "lemonade-load-balancer"))]
+    pub async fn run(&self, ctx: Arc<Context>) -> Result<()> {
+        tracing::info!("Starting load balancer");
 
-        // Config handle
-        let config_handle = spawn_background_handle!(self.config_service, &ctx);
-        // Health handle
-        let health_handle = spawn_background_handle!(self.health_service, &ctx);
-        // Metrics handle
-        let metrics_handle = spawn_background_handle!(self.metrics_service, &ctx);
+        // Spawn background service tasks
+        let config_handle = tokio::spawn({
+            let ctx = ctx.clone();
+            let svc = self.config_service.clone();
+            async move {
+                svc.watch_config(ctx).await;
+            }
+        });
 
-        // Proxy handle (entirely owned by proxy service)
-        let accept_handle = self.proxy_service.accept_connections(&ctx);
+        let health_handle = tokio::spawn({
+            let ctx = ctx.clone();
+            let svc = self.health_service.clone();
+            async move {
+                svc.check_health(ctx).await;
+            }
+        });
 
-        // create runtime context
-        let shutdown_tx = ctx.shutdown_sender();
-        // ctrl-c triggers graceful shutdown
-        wait_for_shutdown!(shutdown_tx);
+        let metrics_handle = tokio::spawn({
+            let ctx = ctx.clone();
+            let svc = self.metrics_service.clone();
+            async move {
+                svc.collect_metrics(ctx).await;
+            }
+        });
 
-        // drain and run handles with timeout
-        drain_and_run_handles_with_timeout!(
-            ctx,
-            config_handle,
-            health_handle,
-            metrics_handle,
-            accept_handle
-        );
+        // Spawn Ctrl-C handler
+        let shutdown_tx = ctx.channels().shutdown_tx();
+        tokio::spawn(async move {
+            let _ = tokio::signal::ctrl_c().await;
+            tracing::info!("Shutdown signal received");
+            let _ = shutdown_tx.send(());
+        });
 
-        // return success
-        Ok(())
+        // PROXY RUNS ON MAIN THREAD (HOT PATH)
+        // This is critical for performance - no extra task overhead
+        tracing::info!("Starting proxy service on main thread");
+        let proxy_result = self.proxy_service.accept_connections(ctx.clone()).await;
+
+        // If proxy exits (shutdown or error), wait for background services
+        tracing::info!("Proxy service stopped, waiting for background services");
+        let cfg = ctx.config();
+        let timeout_ms = cfg.runtime.background_timeout_millis;
+        let _ = tokio::time::timeout(Duration::from_millis(timeout_ms), async {
+            let _ = tokio::join!(config_handle, health_handle, metrics_handle);
+        })
+        .await;
+
+        // Drain remaining connections
+        let drain_ms = cfg.runtime.drain_timeout_millis;
+        ctx.wait_for_drain(Duration::from_millis(drain_ms)).await?;
+
+        tracing::info!("Shutdown complete");
+        proxy_result.map_err(crate::error::Error::Proxy)
     }
 }

@@ -16,6 +16,9 @@ pub enum ConfigError {
     /// TOML parse error
     #[error("TOML parse error: {0}")]
     Toml(#[from] toml::de::Error),
+    /// YAML parse error
+    #[error("YAML parse error: {0}")]
+    Yaml(#[from] serde_yaml::Error),
     /// Parse error
     #[error("Parse error: {0}")]
     Parse(String),

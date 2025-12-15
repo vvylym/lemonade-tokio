@@ -9,6 +9,12 @@ use tokio::net::TcpListener;
 
 /// Run the Axum worker server
 pub async fn run(config: Config) -> Result<(), Box<dyn std::error::Error>> {
+    // Initialize tracing with service name from config and worker package version
+    lemonade_observability::init_tracing(
+        config.service_name(),
+        env!("CARGO_PKG_VERSION"),
+    )?;
+
     let state = AppState::new(config);
     let app = create_router(state.clone());
 

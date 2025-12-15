@@ -16,7 +16,8 @@ impl StrategyService for RoundRobinStrategy {
         &self,
         ctx: Arc<Context>,
     ) -> Result<BackendMeta, StrategyError> {
-        let healthy = ctx.healthy_backends();
+        let routing = ctx.routing_table();
+        let healthy = routing.healthy_backends();
 
         if healthy.is_empty() {
             return Err(StrategyError::NoBackendAvailable);
@@ -24,6 +25,12 @@ impl StrategyService for RoundRobinStrategy {
 
         // Round robin over healthy backends
         let idx = self.counter.fetch_add(1, Ordering::Relaxed) % healthy.len();
-        Ok(healthy[idx].clone())
+        let backend = &healthy[idx];
+        Ok(BackendMeta::new(
+            backend.id(),
+            backend.name(),
+            backend.address(),
+            backend.weight(),
+        ))
     }
 }

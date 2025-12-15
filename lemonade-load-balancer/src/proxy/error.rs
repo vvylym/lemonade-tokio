@@ -4,9 +4,9 @@
 /// Proxy error enum
 #[derive(Debug, thiserror::Error)]
 pub enum ProxyError {
-    /// IO error
-    #[error("io error: {0}")]
-    Io(#[from] std::io::Error),
+    /// Connection refused error
+    #[error("tcp stream error: {0}")]
+    Io(#[from] tokio::io::Error),
     /// Unexpected error
     #[error("unexpected error: {0}")]
     Unexpected(String),

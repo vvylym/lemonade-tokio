@@ -1462,7 +1462,7 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.17",
  "tokio",
- "toml",
+ "toml 0.9.8",
  "tracing",
 ]
 
@@ -1492,9 +1492,11 @@ dependencies = [
  "rstest",
  "serde",
  "serde_json",
+ "serde_yaml",
+ "tempfile",
  "thiserror 2.0.17",
  "tokio",
- "toml 0.8.23",
+ "toml 0.9.8",
 ]
 
 [[package]]
@@ -1502,8 +1504,10 @@ name = "lemonade-worker-actix"
 version = "0.1.0"
 dependencies = [
  "actix-web",
+ "lemonade-observability",
  "lemonade-service",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -1511,10 +1515,12 @@ name = "lemonade-worker-axum"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "lemonade-observability",
  "lemonade-service",
  "tokio",
  "tower",
  "tower-http",
+ "tracing",
 ]
 
 [[package]]
@@ -1524,18 +1530,22 @@ dependencies = [
  "http-body-util",
  "hyper 1.8.1",
  "hyper-util",
+ "lemonade-observability",
  "lemonade-service",
  "serde_json",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
 name = "lemonade-worker-rocket"
 version = "0.1.0"
 dependencies = [
+ "lemonade-observability",
  "lemonade-service",
  "rocket",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -2987,6 +2997,12 @@ name = "toml_write"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5d99f8c9a7727884afe522e9bd5edbfc91a3312b36a77b5fb8926e4c31a41801"
+
+[[package]]
+name = "toml_writer"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "df8b2b54733674ad286d16267dcfc7a71ed5c776e4ac7aa3c3e2561f7c637bf2"
 
 [[package]]
 name = "tonic"

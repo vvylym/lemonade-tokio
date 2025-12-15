@@ -107,23 +107,19 @@ pub fn compute_latency_score(
     latency_ratio * variance_penalty
 }
 
-/// Prepare scoring context from registries
+/// Prepare scoring context from backends
 ///
 /// Analyzes all backends to find maximum values for normalization
 /// and creates a context object containing all necessary data for scoring.
 ///
 /// # Arguments
-/// * `backends` - List of healthy backends to analyze
-/// * `connections` - Connection registry for connection counts
-/// * `metrics` - Metrics snapshot for performance data
+/// * `backends` - List of healthy backends (Arc<Backend>) to analyze
 /// * `routing` - Routing table for backend lookups
 ///
 /// # Returns
-/// ScoringContext with normalized maximum values and registries
+/// ScoringContext with normalized maximum values
 pub fn prepare_scoring_context(
-    backends: &[BackendMeta],
-    connections: Arc<ConnectionRegistry>,
-    metrics: Arc<MetricsSnapshot>,
+    backends: &[Arc<Backend>],
     routing: Arc<RouteTable>,
 ) -> ScoringContext {
     use super::constants::*;
@@ -133,28 +129,23 @@ pub fn prepare_scoring_context(
     let mut max_weight_value = ZERO_F64;
 
     for backend in backends {
-        let backend_id = *backend.id();
-        let backend_index = routing
-            .find_index(backend_id)
-            .unwrap_or(INVALID_BACKEND_INDEX);
-        let connection_count = connections.get(backend_index);
+        let connection_count = backend.active_connections();
         let backend_weight_value =
             backend.weight().unwrap_or(DEFAULT_BACKEND_WEIGHT) as f64;
 
         max_connection_count = max_connection_count.max(connection_count);
         max_weight_value = max_weight_value.max(backend_weight_value);
 
-        // Get max latency from metrics (use p95 if available, else avg)
-        if let Some(backend_metrics) = metrics.get(backend_id) {
-            let p95_latency = backend_metrics.p95_latency_ms;
-            let average_latency = backend_metrics.avg_latency_ms;
-            let latency_value = if p95_latency > average_latency {
-                p95_latency
-            } else {
-                average_latency
-            };
-            max_latency_value = max_latency_value.max(latency_value);
-        }
+        // Get max latency from backend metrics (use p95 if available, else avg)
+        let backend_metrics = backend.metrics_snapshot();
+        let p95_latency = backend_metrics.p95_latency_ms;
+        let average_latency = backend_metrics.avg_latency_ms;
+        let latency_value = if p95_latency > average_latency {
+            p95_latency
+        } else {
+            average_latency
+        };
+        max_latency_value = max_latency_value.max(latency_value);
     }
 
     // Use default max latency if no metrics available
@@ -171,8 +162,6 @@ pub fn prepare_scoring_context(
         max_connections: max_connection_count,
         max_latency_ms: max_latency_value,
         max_weight: max_weight_value,
-        connections,
-        metrics,
         routing,
     }
 }
@@ -275,15 +264,22 @@ pub fn compute_all_backend_scores(
         .enumerate()
         .map(|(backend_index, backend)| {
             let backend_id = *backend.id();
-            let backend_table_index = scoring_context
+
+            // Get actual Backend from routing table to access connection count and metrics
+            let backend_connection_count = scoring_context
                 .routing
-                .find_index(backend_id)
-                .unwrap_or(INVALID_BACKEND_INDEX);
-            let backend_connection_count =
-                scoring_context.connections.get(backend_table_index);
+                .get(backend_id)
+                .map(|b| b.active_connections())
+                .unwrap_or(0);
+
             let backend_weight_value =
                 backend.weight().unwrap_or(DEFAULT_BACKEND_WEIGHT) as f64;
-            let backend_metrics = scoring_context.metrics.get(backend_id);
+
+            // Get metrics from backend
+            let backend_metrics = scoring_context
+                .routing
+                .get(backend_id)
+                .map(|b| b.metrics_snapshot());
 
             // Use cached score if available and valid
             let computed_score =
@@ -315,10 +311,15 @@ mod tests {
     use crate::strategy::adapters::adaptive::cache::AdaptiveCache;
     use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
-    fn create_test_backend(id: u8, weight: Option<u8>) -> BackendMeta {
+    fn create_test_backend_config(id: u8, weight: Option<u8>) -> BackendConfig {
         let address =
             SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080 + id as u16);
-        BackendMeta::new(id, Some(format!("backend-{}", id)), address, weight)
+        BackendConfig {
+            id,
+            name: Some(format!("backend-{}", id)),
+            address,
+            weight,
+        }
     }
 
     #[test]
@@ -562,88 +563,64 @@ mod tests {
 
     #[test]
     fn prepare_scoring_context_with_metrics_should_succeed() {
-        // Given: backends, connections, metrics, and routing
-        let backends = vec![
-            create_test_backend(0, Some(2)),
-            create_test_backend(1, Some(4)),
+        // Given: backends with connections and metrics
+        let backend_configs = vec![
+            create_test_backend_config(0, Some(2)),
+            create_test_backend_config(1, Some(4)),
         ];
-        let connections = Arc::new(ConnectionRegistry::new(2));
-        connections.increment(0);
-        connections.increment(1);
-        connections.increment(1);
-        let metrics = Arc::new(MetricsSnapshot::default());
-        metrics.update(
-            0,
-            BackendMetrics {
-                avg_latency_ms: 10.0,
-                p95_latency_ms: 15.0,
-                error_rate: 0.0,
-                last_updated_ms: 1000,
-            },
-        );
-        metrics.update(
-            1,
-            BackendMetrics {
-                avg_latency_ms: 20.0,
-                p95_latency_ms: 25.0,
-                error_rate: 0.0,
-                last_updated_ms: 1000,
-            },
-        );
-        let routing = Arc::new(RouteTable::new(backends.clone()));
+        let routing = Arc::new(RouteTable::new(backend_configs));
+
+        // Set connection counts and metrics on backends
+        let backends = routing.all_backends();
+        backends[0].increment_connection();
+        backends[1].increment_connection();
+        backends[1].increment_connection();
+
+        backends[0].record_request(10, false);
+        backends[0].record_request(10, false);
+        backends[1].record_request(20, false);
+        backends[1].record_request(20, false);
 
         // When: preparing scoring context
-        let context = prepare_scoring_context(
-            &backends,
-            connections.clone(),
-            metrics.clone(),
-            routing.clone(),
-        );
+        let context = prepare_scoring_context(&backends, routing.clone());
 
         // Then: context has correct max values
         assert_eq!(context.max_connections, 2); // Max connection count
-        assert_eq!(context.max_latency_ms, 25.0); // Max p95 latency (25.0 > 20.0)
+        // Max latency should be the higher of avg or p95
+        // backend0: avg=10, p95=15; backend1: avg=20, p95=30
+        // So max should be 30.0 (p95 of backend1, since p95 > avg)
+        assert_eq!(context.max_latency_ms, 30.0);
         assert_eq!(context.max_weight, 4.0); // Max weight
     }
 
     #[test]
     fn prepare_scoring_context_without_metrics_should_succeed() {
         // Given: backends without metrics
-        let backends = vec![create_test_backend(0, Some(2))];
-        let connections = Arc::new(ConnectionRegistry::new(1));
-        let metrics = Arc::new(MetricsSnapshot::default());
-        let routing = Arc::new(RouteTable::new(backends.clone()));
+        let backend_configs = vec![create_test_backend_config(0, Some(2))];
+        let routing = Arc::new(RouteTable::new(backend_configs));
+        let backends = routing.all_backends();
 
         // When: preparing scoring context
-        let context = prepare_scoring_context(
-            &backends,
-            connections.clone(),
-            metrics.clone(),
-            routing.clone(),
-        );
+        let context = prepare_scoring_context(&backends, routing.clone());
 
-        // Then: context uses default max latency
+        // Then: context uses default max latency when no metrics (DEFAULT_MAX_LATENCY_MS)
+        // Since max_latency_value == 0.0, it gets set to DEFAULT_MAX_LATENCY_MS
         assert_eq!(context.max_latency_ms, DEFAULT_MAX_LATENCY_MS);
-        assert_eq!(context.max_connections, MIN_CONNECTION_COUNT); // At least 1
+        // max_connections should be MIN_CONNECTION_COUNT when 0
+        assert_eq!(context.max_connections, MIN_CONNECTION_COUNT);
     }
 
     #[test]
     fn prepare_scoring_context_with_zero_connections_should_succeed() {
         // Given: backends with zero connections
-        let backends = vec![create_test_backend(0, Some(2))];
-        let connections = Arc::new(ConnectionRegistry::new(1));
-        let metrics = Arc::new(MetricsSnapshot::default());
-        let routing = Arc::new(RouteTable::new(backends.clone()));
+        let backend_configs = vec![create_test_backend_config(0, Some(2))];
+        let routing = Arc::new(RouteTable::new(backend_configs));
+        let backends = routing.all_backends();
 
         // When: preparing scoring context
-        let context = prepare_scoring_context(
-            &backends,
-            connections.clone(),
-            metrics.clone(),
-            routing.clone(),
-        );
+        let context = prepare_scoring_context(&backends, routing.clone());
 
-        // Then: max_connections is at least MIN_CONNECTION_COUNT
+        // Then: max_connections is MIN_CONNECTION_COUNT (when 0, it's set to minimum)
         assert_eq!(context.max_connections, MIN_CONNECTION_COUNT);
     }
 
@@ -658,15 +635,14 @@ mod tests {
             error_rate: 0.05,
             last_updated_ms: 1000,
         });
-        let connections = Arc::new(ConnectionRegistry::new(1));
-        let metrics = Arc::new(MetricsSnapshot::default());
-        let routing = Arc::new(RouteTable::new(vec![create_test_backend(0, Some(2))]));
+        let routing = Arc::new(RouteTable::new(vec![create_test_backend_config(
+            0,
+            Some(2),
+        )]));
         let scoring_context = ScoringContext {
             max_connections: 10,
             max_latency_ms: 100.0,
             max_weight: 4.0,
-            connections: connections.clone(),
-            metrics: metrics.clone(),
             routing: routing.clone(),
         };
         let weights = AdaptiveWeights::default();
@@ -690,15 +666,14 @@ mod tests {
         let backend_connection_count = 5;
         let backend_weight_value = 2.0;
         let backend_metrics = None;
-        let connections = Arc::new(ConnectionRegistry::new(1));
-        let metrics = Arc::new(MetricsSnapshot::default());
-        let routing = Arc::new(RouteTable::new(vec![create_test_backend(0, Some(2))]));
+        let routing = Arc::new(RouteTable::new(vec![create_test_backend_config(
+            0,
+            Some(2),
+        )]));
         let scoring_context = ScoringContext {
             max_connections: 10,
             max_latency_ms: 100.0,
             max_weight: 4.0,
-            connections: connections.clone(),
-            metrics: metrics.clone(),
             routing: routing.clone(),
         };
         let weights = AdaptiveWeights::default();
@@ -722,15 +697,14 @@ mod tests {
         let backend_connection_count = 5;
         let backend_weight_value = 2.0;
         let backend_metrics = None;
-        let connections = Arc::new(ConnectionRegistry::new(1));
-        let metrics = Arc::new(MetricsSnapshot::default());
-        let routing = Arc::new(RouteTable::new(vec![create_test_backend(0, Some(2))]));
+        let routing = Arc::new(RouteTable::new(vec![create_test_backend_config(
+            0,
+            Some(2),
+        )]));
         let scoring_context = ScoringContext {
             max_connections: 10,
             max_latency_ms: 100.0,
             max_weight: 0.0,
-            connections: connections.clone(),
-            metrics: metrics.clone(),
             routing: routing.clone(),
         };
         let weights = AdaptiveWeights::default();
@@ -751,19 +725,20 @@ mod tests {
     #[test]
     fn compute_all_backend_scores_should_succeed() {
         // Given: backends, scoring context, cache, and weights
-        let backends = vec![
-            create_test_backend(0, Some(2)),
-            create_test_backend(1, Some(4)),
+        let backend_configs = vec![
+            create_test_backend_config(0, Some(2)),
+            create_test_backend_config(1, Some(4)),
         ];
-        let connections = Arc::new(ConnectionRegistry::new(2));
-        let metrics = Arc::new(MetricsSnapshot::default());
-        let routing = Arc::new(RouteTable::new(backends.clone()));
+        let routing = Arc::new(RouteTable::new(backend_configs));
+        let backends_meta: Vec<BackendMeta> = routing
+            .all_backends()
+            .iter()
+            .map(|b| BackendMeta::new(b.id(), b.name(), b.address(), b.weight()))
+            .collect();
         let scoring_context = ScoringContext {
             max_connections: 10,
             max_latency_ms: 100.0,
             max_weight: 4.0,
-            connections: connections.clone(),
-            metrics: metrics.clone(),
             routing: routing.clone(),
         };
         let cached_scores = vec![(0, None), (1, None)]; // No cached scores
@@ -773,7 +748,7 @@ mod tests {
 
         // When: computing all backend scores
         let scores = compute_all_backend_scores(
-            &backends,
+            &backends_meta,
             &scoring_context,
             &cached_scores,
             &cache,
@@ -790,16 +765,17 @@ mod tests {
     #[test]
     fn compute_all_backend_scores_with_cached_scores_should_succeed() {
         // Given: backends with cached scores
-        let backends = vec![create_test_backend(0, Some(2))];
-        let connections = Arc::new(ConnectionRegistry::new(1));
-        let metrics = Arc::new(MetricsSnapshot::default());
-        let routing = Arc::new(RouteTable::new(backends.clone()));
+        let backend_configs = vec![create_test_backend_config(0, Some(2))];
+        let routing = Arc::new(RouteTable::new(backend_configs));
+        let backends_meta: Vec<BackendMeta> = routing
+            .all_backends()
+            .iter()
+            .map(|b| BackendMeta::new(b.id(), b.name(), b.address(), b.weight()))
+            .collect();
         let scoring_context = ScoringContext {
             max_connections: 10,
             max_latency_ms: 100.0,
             max_weight: 4.0,
-            connections: connections.clone(),
-            metrics: metrics.clone(),
             routing: routing.clone(),
         };
         let cached_scores = vec![(0, Some(5.5))]; // Cached score
@@ -809,7 +785,7 @@ mod tests {
 
         // When: computing all backend scores
         let scores = compute_all_backend_scores(
-            &backends,
+            &backends_meta,
             &scoring_context,
             &cached_scores,
             &cache,
@@ -826,15 +802,11 @@ mod tests {
     fn compute_all_backend_scores_empty_backends_should_succeed() {
         // Given: empty backends list
         let backends = Vec::<BackendMeta>::new();
-        let connections = Arc::new(ConnectionRegistry::new(0));
-        let metrics = Arc::new(MetricsSnapshot::default());
         let routing = Arc::new(RouteTable::new(Vec::new()));
         let scoring_context = ScoringContext {
             max_connections: 1,
             max_latency_ms: 100.0,
             max_weight: 1.0,
-            connections: connections.clone(),
-            metrics: metrics.clone(),
             routing: routing.clone(),
         };
         let cached_scores = Vec::new();

@@ -136,10 +136,35 @@ The library uses `thiserror` for error handling with distinct error types:
 - `serde` / `serde_json` / `toml`: For serialization/deserialization of models and configuration files
 - `thiserror`: For error handling
 
+## Integration with Workers
+
+This library is used by all worker implementations:
+- `lemonade-worker-actix` (Actix Web framework)
+- `lemonade-worker-axum` (Axum framework)
+- `lemonade-worker-hyper` (Hyper framework)
+- `lemonade-worker-rocket` (Rocket framework)
+
+Each worker wraps `WorkerServiceImpl` and exposes:
+- `GET /health` endpoint mapped to `health_check()`
+- `GET /work` endpoint mapped to `work()`
+
 ## Use Cases
 
 This service is designed for:
-- Load balancer testing and benchmarking
-- Simulating backend services with configurable response times
-- Health check endpoint implementations
-- Service mesh and microservices development
+- **Load balancer testing**: Provides consistent backend behavior for testing load balancing strategies
+- **Benchmarking**: Configurable work delays allow testing under different latency scenarios
+- **Framework comparison**: Same service logic across different web frameworks enables fair comparisons
+- **Health check patterns**: Demonstrates health check endpoint implementation
+- **Service mesh development**: Useful for microservices and service mesh testing
+
+## Testing
+
+Run the test suite:
+
+```bash
+cargo test --package lemonade-service
+```
+
+## License
+
+MIT License - see [LICENSE](LICENSE) file for details.
