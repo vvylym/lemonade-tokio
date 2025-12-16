@@ -4,6 +4,7 @@ use lemonade_service::config::{Config, ConfigBuilder, WorkerAddress};
 use std::{path::PathBuf, time::Duration};
 
 /// Run a worker server
+#[tracing::instrument(skip_all, fields(service.name = %framework, service.instance.id = ?name))]
 pub async fn run_worker(
     framework: String,
     config_file: Option<PathBuf>,

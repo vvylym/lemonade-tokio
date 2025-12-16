@@ -22,11 +22,12 @@ use std::{path::PathBuf, sync::Arc};
 /// Run the load balancer with the given configuration
 ///
 /// # Arguments
-/// * `config` - The configuration for the load balancer
+/// * `config_file` - Optional path to config file for hot-reloading
 ///
 /// # Returns
 /// * `Ok(())` if the load balancer ran successfully
 /// * `Err(Box<dyn std::error::Error>)` if there was an error
+#[tracing::instrument(skip_all, fields(service.name = "lemonade-load-balancer", config.file = ?config_file))]
 pub async fn run(config_file: Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
     // Create static config service (uses provided config, no file watching)
     let config_service: Arc<dyn ConfigService> =
