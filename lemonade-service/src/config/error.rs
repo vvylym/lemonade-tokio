@@ -25,9 +25,6 @@ pub enum ConfigError {
     /// Worker address error
     #[error("Worker address error: {0}")]
     WorkerAddress(#[from] WorkerAddressError),
-    /// YAML parse error
-    #[error("YAML parse error: {0}")]
-    Yaml(#[from] serde_yaml::Error),
     /// Unsupported file format
     #[error("Unsupported file format: {0}. Supported formats: .json, .toml, .yaml, .yml")]
     UnsupportedFormat(String),

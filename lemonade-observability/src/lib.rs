@@ -14,16 +14,15 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_create_resource_with_defaults() {
-        let resource = create_resource("test-service", None, None);
+    fn test_create_resource() {
+        let resource = create_resource("test-service", "1.0.0");
         // Resource should be created successfully
         assert!(!resource.is_empty());
     }
 
     #[test]
     fn test_create_resource_with_custom_values() {
-        let resource =
-            create_resource("custom-service", Some("1.0.0"), Some("instance-1"));
+        let resource = create_resource("custom-service", "2.0.0");
         // Resource should be created successfully
         assert!(!resource.is_empty());
     }
@@ -32,11 +31,11 @@ mod tests {
     fn test_init_tracing_succeeds() {
         // This test verifies init_tracing can be called without panicking
         // Note: It can only be called once due to Once, so we test it doesn't panic
-        let result = init_tracing("test-init");
+        let result = init_tracing("test-init", "1.0.0");
         assert!(result.is_ok());
 
         // Second call should also succeed (Once prevents re-initialization)
-        let result2 = init_tracing("test-init-2");
+        let result2 = init_tracing("test-init-2", "1.0.0");
         assert!(result2.is_ok());
     }
 }
