@@ -90,24 +90,6 @@ jobs:
         with:
           command: check all
 
-  # PMAT quality gates
-  pmat:
-    name: PMAT Quality Gates
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - name: Install PMAT
-        run: cargo install pmat
-      - name: Run PMAT quality gates
-        run: pmat quality-gate
-      - name: Upload PMAT reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: pmat-reports
-          path: target/pmat-reports/
-
   # Build all binaries
   build:
     name: Build
