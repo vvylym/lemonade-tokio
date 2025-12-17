@@ -6,17 +6,12 @@ This directory contains configuration files for both workers and the load balanc
 
 ```
 config/
-├── worker/                    # Worker configuration files
-│   ├── worker-1.toml         # TOML format
-│   ├── worker-2.json         # JSON format
-│   ├── worker-3.yaml         # YAML format
-│   └── worker-4.toml         # TOML format
-└── load-balancer/            # Load balancer configuration files
-    ├── adaptive.toml         # TOML format
-    ├── round-robin.json      # JSON format
-    ├── weighted-round-robin.yaml  # YAML format
-    ├── fastest-response-time.json  # JSON format
-    └── least-connections.yaml     # YAML format
+├── load-balancer.yaml        # Main load balancer configuration (YAML format)
+├── worker-1.toml        # TOML format
+│── worker-2.json         # JSON format
+│── worker-3.yaml         # YAML format
+│── worker-4.toml         # TOML format
+└── worker-4.toml         # TOML format
 ```
 
 ## Supported Formats
@@ -72,12 +67,12 @@ work_delay: 20
 
 ```bash
 # Start a worker using a config file (format is auto-detected from extension)
-cargo run --release -- worker --config config/worker/worker-1.toml
-cargo run --release -- worker --config config/worker/worker-2.json
-cargo run --release -- worker --config config/worker/worker-3.yaml
+cargo run --release -- worker --config config/worker-1.toml
+cargo run --release -- worker --config config/worker-2.json
+cargo run --release -- worker --config config/worker-3.yaml
 
 # Or specify the framework explicitly
-cargo run --release -- worker --framework actix --config config/worker/worker-1.toml
+cargo run --release -- worker --framework actix --config config/worker-1.toml
 ```
 
 ## Load Balancer Configuration
@@ -191,10 +186,8 @@ backends:
 ### Using Load Balancer Configs
 
 ```bash
-# Start load balancer with a specific strategy (format is auto-detected from extension)
-cargo run --release -- load-balancer --config config/load-balancer/adaptive.toml
-cargo run --release -- load-balancer --config config/load-balancer/round-robin.json
-cargo run --release -- load-balancer --config config/load-balancer/weighted-round-robin.yaml
+# Start load balancer with the main configuration file (recommended)
+cargo run --release -- load-balancer --config config/load-balancer.yaml
 ```
 
 ## Complete Example
@@ -203,27 +196,27 @@ To run a complete setup with 4 workers and a load balancer:
 
 ### Terminal 1: Start Worker 1 (TOML)
 ```bash
-cargo run --release -- worker -f actix --config config/worker/worker-1.toml
+cargo run --release -- worker -f actix --config config/worker-1.toml
 ```
 
 ### Terminal 2: Start Worker 2 (JSON)
 ```bash
-cargo run --release -- worker -f axum --config config/worker/worker-2.json
+cargo run --release -- worker -f axum --config config/worker-2.json
 ```
 
 ### Terminal 3: Start Worker 3 (YAML)
 ```bash
-cargo run --release -- worker -f hyper --config config/worker/worker-3.yaml
+cargo run --release -- worker -f hyper --config config/worker-3.yaml
 ```
 
 ### Terminal 4: Start Worker 4 (TOML)
 ```bash
-cargo run --release -- worker -f rocket --config config/worker/worker-4.toml
+cargo run --release -- worker -f rocket --config config/worker-4.toml
 ```
 
-### Terminal 5: Start Load Balancer (JSON)
+### Terminal 5: Start Load Balancer (YAML)
 ```bash
-cargo run --release -- load-balancer --config config/load-balancer/round-robin.json
+cargo run --release -- load-balancer --config config/load-balancer.yaml
 ```
 
 ### Testing
