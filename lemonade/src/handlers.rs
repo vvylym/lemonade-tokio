@@ -72,6 +72,7 @@ pub async fn run_worker(
 }
 
 /// Run a load balancer
+#[tracing::instrument(skip_all, fields(service.name = "load-balancer", service.instance.id = "tokio"))]
 pub async fn run_load_balancer(
     config_file: Option<PathBuf>,
 ) -> Result<(), Box<dyn std::error::Error>> {

@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use constants::*;
-use dotenv::dotenv;
+use dotenvy::dotenv;
 
 /// Config builder
 #[derive(Default)]

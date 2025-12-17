@@ -186,12 +186,12 @@ app.run().await?;
 ## Configuration
 
 The load balancer can be configured via:
-1. **Configuration files** (JSON or TOML) - supports hot-reload via file watching
+1. **Configuration files** (JSON, YAML, or TOML) - supports hot-reload via file watching
 2. **Environment variables** - prefixed with `LEMONADE_LB_`
 
 ### Configuration File Format
 
-Configuration files support JSON and TOML formats. When a configuration file is provided, the load balancer watches for changes and automatically reloads the configuration.
+Configuration files support JSON, YAML, and TOML formats. When a configuration file is provided, the load balancer watches for changes and automatically reloads the configuration.
 
 **TOML Example:**
 ```toml
@@ -267,6 +267,40 @@ timeout_ms = 5000
     "timeout_ms": 5000
   }
 }
+```
+
+**YAML Example:**
+```yaml
+runtime:
+  metrics_cap: 1000
+  health_cap: 100
+  drain_timeout_millis: 5000
+  background_timeout_millis: 3000
+  accept_timeout_millis: 2000
+
+proxy:
+  listen_address: "127.0.0.1:3000"
+  max_connections: 10000
+
+strategy: round_robin
+
+backends:
+  - id: 0
+    name: backend-1
+    address: "127.0.0.1:4001"
+    weight: 1
+  - id: 1
+    name: backend-2
+    address: "127.0.0.1:4002"
+    weight: 2
+
+health:
+  interval_ms: 30000
+  timeout_ms: 5000
+
+metrics:
+  interval_ms: 10000
+  timeout_ms: 5000
 ```
 
 ### Environment Variables

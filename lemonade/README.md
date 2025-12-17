@@ -137,7 +137,7 @@ cargo run --release -- worker --framework rocket \
   --address 127.0.0.1:50540 --name worker-rocket --delay 20
 
 # Terminal 5: Start load balancer
-cargo run --release -- load-balancer --config config/load-balancer.toml
+cargo run --release -- load-balancer --config config/load-balancer.yaml
 
 # Terminal 6: Test it
 curl http://127.0.0.1:50501/health

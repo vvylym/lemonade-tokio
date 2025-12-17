@@ -2,7 +2,7 @@
 
 A high-performance, asynchronous TCP load balancer written in Rust with support for multiple load balancing strategies and HTTP worker frameworks.
 
-## Quick Start
+## Quick Start (Usage)
 
 ### Prerequisites
 
@@ -45,7 +45,7 @@ Supported frameworks: `actix`, `axum`, `hyper`, `rocket`
 
 ```bash
 # Using configuration file (recommended)
-cargo run --release -- load-balancer --config config/load-balancer.toml
+cargo run --release -- load-balancer --config config/load-balancer.yaml
 
 # Using environment variables
 LEMONADE_LB_LISTEN_ADDRESS=127.0.0.1:50501 \
@@ -135,10 +135,10 @@ cargo llvm-cov --summary-only --workspace --all-targets --all-features
 
 1. Start load balancer with config file:
    ```bash
-   cargo run --release -- load-balancer --config config/load-balancer.toml
+   cargo run --release -- load-balancer --config config/load-balancer.yaml
    ```
 
-2. Modify `config/load-balancer.toml` (change strategy, add/remove backends, etc.)
+2. Modify `config/load-balancer.yaml` (change strategy, add/remove backends, etc.)
 
 3. Changes apply automatically within 1 second (configurable via `config_watch_interval_millis`)
 
@@ -146,40 +146,38 @@ cargo llvm-cov --summary-only --workspace --all-targets --all-features
 
 ### Load Balancer Configuration
 
-Example `config/load-balancer.toml`:
+Example `config/load-balancer.yaml`:
 
-```toml
-[runtime]
-metrics_cap = 1000
-health_cap = 100
-drain_timeout_millis = 5000
-background_timeout_millis = 30000
-accept_timeout_millis = 60000
-config_watch_interval_millis = 1000
+```yaml
+runtime:
+  metrics_cap: 1000
+  health_cap: 100
+  drain_timeout_millis: 5000
+  background_timeout_millis: 30000
+  accept_timeout_millis: 60000
+  config_watch_interval_millis: 1000
 
-[proxy]
-listen_address = "127.0.0.1:50501"
-max_connections = 10000
+proxy:
+  listen_address: "127.0.0.1:50501"
+  max_connections: 10000
 
-[strategy]
-algorithm = "round_robin"  # or "least_connections", "weighted_round_robin", "fastest_response_time", "adaptive"
+strategy: round_robin  # or "least_connections", "weighted_round_robin", "fastest_response_time", "adaptive"
 
-[[backends]]
-id = 0
-name = "worker-hyper"
-address = "127.0.0.1:50510"
+backends:
+  - id: 0
+    name: worker-hyper
+    address: "127.0.0.1:50510"
 
-[[backends]]
-id = 1
-name = "worker-axum"
-address = "127.0.0.1:50520"
+  - id: 1
+    name: worker-axum
+    address: "127.0.0.1:50520"
 
-[health]
-interval = "5s"
-timeout = "2s"
+health:
+  interval: "5s"
+  timeout: "2s"
 
-[metrics]
-interval = "10s"
+metrics:
+  interval: "10s"
 ```
 
 ### Worker Configuration

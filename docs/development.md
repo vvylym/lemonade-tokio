@@ -175,13 +175,13 @@ Test hot reload manually:
 
 ```bash
 # Terminal 1: Start load balancer
-cargo run --release -- load-balancer --config config/load-balancer.toml
+cargo run --release -- load-balancer --config config/load-balancer.yaml
 
 # Terminal 2: Monitor logs
 tail -f /tmp/lemonade-lb.log
 
 # Terminal 3: Modify config file
-vim config/load-balancer.toml
+vim config/load-balancer.yaml
 # Change strategy or backends, save
 
 # Verify changes applied within 1 second (config_watch_interval_millis)

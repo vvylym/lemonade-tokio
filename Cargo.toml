@@ -19,7 +19,7 @@ serde_yaml = "0.9"
 toml = "0.9"
 
 # Environment variables
-dotenv = "0.15.0"
+dotenvy = "0.15"
 
 # Error handling
 thiserror = "2.0"
@@ -68,3 +68,19 @@ homepage = ""
 repository = ""
 documentation = ""
 publish = false
+
+# Profiles tuned for perf measurements and flamegraph support
+[profile.dev]
+opt-level = 1          # faster debug builds with some optimization
+debug = true           # keep symbols for profiling/flamegraphs
+split-debuginfo = "packed"
+
+[profile.release]
+opt-level = 3
+debug = true           # keep symbols for perf/flamegraph
+lto = "thin"
+codegen-units = 1
+split-debuginfo = "packed"
+
+[profile.bench]
+inherits = "release"

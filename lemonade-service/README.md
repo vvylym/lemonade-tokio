@@ -22,7 +22,7 @@ The library follows a clean architecture pattern with clear separation of concer
 ### Configuration
 
 The service can be configured via:
-1. **Configuration files** (JSON or TOML)
+1. **Configuration files** (JSON, YAML, or TOML)
 2. **Environment variables** (prefixed with `LEMONADE_WORKER_`)
 3. **Programmatic configuration** via the `Config` struct
 
@@ -47,6 +47,13 @@ work_delay_ms = 20
   "service_name": "worker-1",
   "work_delay_ms": 20
 }
+```
+
+**YAML Example:**
+```yaml
+listen_address: "127.0.0.1:4001"
+service_name: worker-1
+work_delay_ms: 20
 ```
 
 Note: `work_delay` in the struct is a `Duration`, but in configuration files it's specified as `work_delay_ms` (milliseconds).

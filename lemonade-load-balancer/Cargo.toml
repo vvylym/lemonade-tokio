@@ -36,7 +36,7 @@ serde_yaml = { workspace = true }
 toml = { workspace = true }
 
 ## Environment variables
-dotenv = { workspace = true }
+dotenvy = { workspace = true }
 
 ## Observability
 lemonade-observability = { path = "../lemonade-observability" }
