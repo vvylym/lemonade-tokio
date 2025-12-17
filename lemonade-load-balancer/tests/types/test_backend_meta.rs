@@ -157,3 +157,136 @@ proptest! {
         }
     }
 }
+
+#[test]
+fn test_serialize_deserialize_backend_meta() {
+    let meta = BackendMeta::new(
+        5u8,
+        Some("test-backend"),
+        SocketAddr::new(IpAddr::V4(Ipv4Addr::new(10, 0, 0, 1)), 8080),
+        Some(15u8),
+    );
+    let json = serde_json::to_string(&meta).expect("Failed to serialize");
+    let deserialized: BackendMeta =
+        serde_json::from_str(&json).expect("Failed to deserialize");
+    assert_eq!(meta.id(), deserialized.id());
+    assert_eq!(meta.name(), deserialized.name());
+    assert_eq!(meta.weight(), deserialized.weight());
+}
+
+#[test]
+fn test_backend_meta_with_backend_address() {
+    let addr_str = "192.168.0.1:9000";
+    let backend_addr = BackendAddress::parse(addr_str).expect("Failed to parse");
+    let meta = BackendMeta::new(10u8, Some("addr-backend"), backend_addr, Some(20u8));
+    assert_eq!(meta.id(), &10u8);
+    assert_eq!(meta.name(), Some(&"addr-backend".to_string()));
+    assert_eq!(meta.weight(), Some(20u8));
+}
+
+#[test]
+fn test_backend_meta_equality_different_address() {
+    let meta1 = BackendMeta::new(
+        1u8,
+        Some("backend"),
+        SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080),
+        Some(10u8),
+    );
+    let meta2 = BackendMeta::new(
+        1u8,
+        Some("backend"),
+        SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8081),
+        Some(10u8),
+    );
+    assert_ne!(meta1, meta2);
+}
+
+#[test]
+fn test_backend_meta_equality_different_weight() {
+    let meta1 = BackendMeta::new(
+        1u8,
+        Some("backend"),
+        SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080),
+        Some(10u8),
+    );
+    let meta2 = BackendMeta::new(
+        1u8,
+        Some("backend"),
+        SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080),
+        Some(20u8),
+    );
+    assert_ne!(meta1, meta2);
+}
+
+#[test]
+fn test_backend_meta_equality_different_name() {
+    let meta1 = BackendMeta::new(
+        1u8,
+        Some("backend1"),
+        SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080),
+        Some(10u8),
+    );
+    let meta2 = BackendMeta::new(
+        1u8,
+        Some("backend2"),
+        SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080),
+        Some(10u8),
+    );
+    assert_ne!(meta1, meta2);
+}
+
+#[test]
+fn test_backend_meta_hash() {
+    use std::collections::HashMap;
+    let meta1 = BackendMeta::new(
+        1u8,
+        Some("backend"),
+        SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080),
+        Some(10u8),
+    );
+    let meta2 = BackendMeta::new(
+        1u8,
+        Some("backend"),
+        SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080),
+        Some(10u8),
+    );
+    let mut map = HashMap::new();
+    map.insert(meta1, "value");
+    assert_eq!(map.get(&meta2), Some(&"value"));
+}
+
+#[test]
+fn test_backend_meta_with_string_owned() {
+    let name_string = "my-string".to_string();
+    let meta = BackendMeta::new(
+        10u8,
+        Some(name_string.as_str()),
+        SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080),
+        Some(5u8),
+    );
+    assert_eq!(meta.name(), Some(&"my-string".to_string()));
+}
+
+#[test]
+fn test_backend_meta_display_with_all_fields() {
+    let meta = BackendMeta::new(
+        1u8,
+        Some("display-backend"),
+        SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080),
+        Some(10u8),
+    );
+    let display = format!("{:?}", meta);
+    assert!(display.contains("display-backend"));
+}
+
+#[test]
+fn test_backend_meta_display_without_name() {
+    let meta = BackendMeta::new(
+        1u8,
+        None::<String>,
+        SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080),
+        Some(10u8),
+    );
+    let display = format!("{:?}", meta);
+    assert!(display.contains("127.0.0.1"));
+}

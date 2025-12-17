@@ -3,28 +3,16 @@
 //! Uses notify crate for file watching and hot-reload of configuration
 
 use crate::config::builder::ConfigBuilder;
-use crate::config::error::ConfigError;
-use crate::config::models::Config;
 use crate::config::port::ConfigService;
 use crate::prelude::*;
-use arc_swap::ArcSwap;
 use async_trait::async_trait;
-use notify::{RecommendedWatcher, RecursiveMode, Watcher};
+use notify::{RecursiveMode, Watcher};
 use std::path::PathBuf;
-use std::sync::Arc;
-use tokio::sync::Notify as TokioNotify;
 
 /// Notify-based config service implementation
 pub struct NotifyConfigService {
-    /// Config file path (None means use environment variables)
+    /// Config file path
     config_path: Option<PathBuf>,
-    /// Lock-free atomic config storage (wrapped in Arc for sharing)
-    config: Arc<ArcSwap<Config>>,
-    /// Shutdown notification
-    shutdown: Arc<TokioNotify>,
-    /// File watcher (kept alive to maintain watch)
-    #[allow(dead_code)]
-    _watcher: Option<RecommendedWatcher>,
 }
 
 impl NotifyConfigService {
@@ -38,83 +26,122 @@ impl NotifyConfigService {
     /// * `Err(ConfigError)` if config file doesn't exist or can't be read
     pub fn new(config_path: Option<impl Into<PathBuf>>) -> Result<Self, ConfigError> {
         let config_path = config_path.map(|p| p.into());
-        let config = ConfigBuilder::from_file(config_path.as_deref())?;
 
-        Ok(Self {
-            config_path,
-            config: Arc::new(ArcSwap::from_pointee(config)),
-            shutdown: Arc::new(TokioNotify::new()),
-            _watcher: None,
-        })
+        // Validate config file exists if provided
+        if let Some(ref path) = config_path
+            && !path.exists()
+        {
+            return Err(ConfigError::FileNotFound(path.clone()));
+        }
+
+        Ok(Self { config_path })
     }
 }
 
 #[async_trait]
 impl ConfigService for NotifyConfigService {
-    fn snapshot(&self) -> Config {
-        self.config.load_full().as_ref().clone()
-    }
-
-    async fn start(&self, ctx: Arc<Context>) -> Result<(), ConfigError> {
+    #[tracing::instrument(skip(self, ctx), fields(service.name = "lemonade-load-balancer", service.type = "config"))]
+    async fn watch_config(&self, ctx: Arc<Context>) {
         if let Some(ref config_path) = self.config_path {
-            // Create file watcher (we keep it in the struct to keep it alive)
-            let mut _watcher = notify::recommended_watcher(
+            tracing::info!("Starting config watcher for file: {:?}", config_path);
+
+            let mut shutdown_rx = ctx.channels().shutdown_rx();
+
+            // Get initial watch interval from config
+            let initial_config = ctx.config();
+            let mut watch_interval_ms =
+                initial_config.runtime.config_watch_interval_millis;
+
+            // Create file watcher (we keep it alive to maintain watch)
+            let _watcher = match notify::recommended_watcher(
                 move |_result: notify::Result<notify::Event>| {
                     // File change events are handled by polling in the background task
                 },
-            )?;
+            ) {
+                Ok(mut watcher) => {
+                    if let Err(e) =
+                        watcher.watch(config_path, RecursiveMode::NonRecursive)
+                    {
+                        tracing::error!("Failed to watch config file: {}", e);
+                        return;
+                    }
+                    Some(watcher)
+                }
+                Err(e) => {
+                    tracing::error!("Failed to create file watcher: {}", e);
+                    return;
+                }
+            };
 
-            // Watch the config file
-            _watcher.watch(config_path, RecursiveMode::NonRecursive)?;
+            // Track last modification time to only reload when file actually changes
+            let mut last_mtime = std::fs::metadata(config_path)
+                .and_then(|m| m.modified())
+                .ok();
 
-            // Spawn a background task to handle file changes
-            let config_path = config_path.clone();
-            let config_arc = self.config.clone();
-            let ctx_clone = ctx.clone();
-            let shutdown_clone = self.shutdown.clone();
+            // Use configurable watch interval from runtime config
+            let mut debounce = tokio::time::interval(tokio::time::Duration::from_millis(
+                watch_interval_ms,
+            ));
 
-            tokio::spawn(async move {
-                let mut debounce =
-                    tokio::time::interval(tokio::time::Duration::from_millis(100));
-                loop {
-                    tokio::select! {
-                        _ = shutdown_clone.notified() => {
-                            break;
+            loop {
+                tokio::select! {
+                    _ = shutdown_rx.recv() => {
+                        tracing::info!("Config watcher received shutdown signal");
+                        break;
+                    }
+                    _ = debounce.tick() => {
+                        // Check if watch interval changed in config and update debounce interval
+                        let current_config = ctx.config();
+                        let new_watch_interval_ms = current_config.runtime.config_watch_interval_millis;
+                        if new_watch_interval_ms != watch_interval_ms {
+                            watch_interval_ms = new_watch_interval_ms;
+                            debounce = tokio::time::interval(tokio::time::Duration::from_millis(watch_interval_ms));
+                            tracing::debug!("Config watch interval updated to {}ms", watch_interval_ms);
                         }
-                        _ = debounce.tick() => {
+
+                        // Check if file was actually modified
+                        let current_mtime = std::fs::metadata(config_path)
+                            .and_then(|m| m.modified())
+                            .ok();
+
+                        // Only reload if modification time changed
+                        if current_mtime != last_mtime {
+                            last_mtime = current_mtime;
+
                             // Check if file was modified and reload using ConfigBuilder
-                            if let Ok(new_config) = ConfigBuilder::from_file(Some(&config_path)) {
-                                config_arc.store(Arc::new(new_config.clone()));
+                            match ConfigBuilder::from_file(Some(config_path)) {
+                                Ok(new_config) => {
+                                    tracing::info!("Config file changed, reloading configuration");
+                                    tracing::debug!(
+                                        "New config: {} backends, strategy: {:?}",
+                                        new_config.backends.len(),
+                                        new_config.strategy
+                                    );
 
-                                // Update context with new config
-                                if let Err(e) = ctx_clone.set_backends(new_config.backends.clone()) {
-                                    eprintln!("Failed to update backends: {}", e);
+                                    // Call ctx.migrate() to handle all updates atomically
+                                    if let Err(e) = ctx.migrate(new_config).await {
+                                        tracing::error!("Failed to migrate config: {}", e);
+                                    } else {
+                                        tracing::debug!("Config migrated successfully");
+                                    }
                                 }
-
-                                // Update strategy if changed
-                                let new_strategy = StrategyBuilder::new()
-                                    .with_strategy(new_config.strategy.clone())
-                                    .with_backends(new_config.backends.clone())
-                                    .build();
-                                if let Ok(strategy) = new_strategy {
-                                    ctx_clone.set_strategy(strategy);
+                                Err(e) => {
+                                    tracing::warn!(
+                                        "Failed to reload config file, keeping previous configuration: {}",
+                                        e
+                                    );
                                 }
-
-                                // Update timeouts if changed
-                                // Note: Context::set_timeouts requires &mut, so we can't update it here
-                                // This would need to be handled differently or Context needs a method that takes &self
                             }
                         }
                     }
                 }
-            });
+            }
+            tracing::info!("Config watcher stopped");
+        } else {
+            tracing::info!("No config file specified, using environment variables");
+            // For env vars, just wait for shutdown
+            let mut shutdown_rx = ctx.channels().shutdown_rx();
+            let _ = shutdown_rx.recv().await;
         }
-
-        Ok(())
-    }
-
-    async fn shutdown(&self) -> Result<(), ConfigError> {
-        self.shutdown.notify_waiters();
-        Ok(())
     }
 }

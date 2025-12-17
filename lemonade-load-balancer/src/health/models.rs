@@ -75,3 +75,71 @@ pub enum HealthStatus {
     /// Unhealthy
     Unhealthy,
 }
+
+/// Backend failure events from proxy to health service
+///
+/// These events are sent by the proxy service when it encounters errors
+/// while attempting to forward requests to backends. The health service
+/// uses these events for immediate failure detection without waiting for
+/// the next periodic health check.
+///
+/// # Examples
+///
+/// ```no_run
+/// use lemonade_load_balancer::health::models::BackendFailureEvent;
+///
+/// // Report connection refused
+/// let event = BackendFailureEvent::ConnectionRefused { backend_id: 0 };
+///
+/// // Report timeout
+/// let event = BackendFailureEvent::Timeout { backend_id: 1 };
+///
+/// // Report consecutive errors
+/// let event = BackendFailureEvent::ConsecutiveErrors {
+///     backend_id: 2,
+///     count: 5,
+/// };
+/// ```
+#[derive(Debug, Clone)]
+pub enum BackendFailureEvent {
+    /// Proxy detected connection refused
+    ///
+    /// The backend refused the TCP connection. This typically indicates
+    /// the backend service is not listening on the expected port or
+    /// the backend host is unreachable.
+    ConnectionRefused {
+        /// Backend identifier
+        backend_id: BackendId,
+    },
+
+    /// Proxy detected timeout
+    ///
+    /// The backend did not respond within the configured timeout period.
+    /// This may indicate the backend is overloaded or experiencing network issues.
+    Timeout {
+        /// Backend identifier
+        backend_id: BackendId,
+    },
+
+    /// Proxy detected backend closed connection
+    ///
+    /// The backend closed the connection unexpectedly before completing
+    /// the request/response cycle. This may indicate a backend crash or
+    /// premature connection termination.
+    BackendClosed {
+        /// Backend identifier
+        backend_id: BackendId,
+    },
+
+    /// Multiple consecutive errors detected
+    ///
+    /// The proxy has detected multiple consecutive failures when attempting
+    /// to connect to this backend. This triggers immediate health check
+    /// escalation.
+    ConsecutiveErrors {
+        /// Backend identifier
+        backend_id: BackendId,
+        /// Number of consecutive errors
+        count: u32,
+    },
+}

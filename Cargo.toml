@@ -9,15 +9,17 @@ members = [
     "lemonade-worker-hyper", 
     "lemonade-worker-rocket"
 ]
-resolver = "3"
+resolver = "2"
 
 [workspace.dependencies]
 # Serialization and deserialization
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+serde_yaml = "0.9"
+toml = "0.9"
 
 # Environment variables
-dotenv = "0.15.0"
+dotenvy = "0.15"
 
 # Error handling
 thiserror = "2.0"
@@ -33,12 +35,14 @@ mockall = "0.14.0"
 proptest = "1.9"
 quickcheck = "1.0"
 rstest = "0.26"
+tempfile = "3.23"
 
 # CLI
 clap = { version = "4.5", features = ["derive"] }
 
 # Service implementation
 lemonade-service = { path = "lemonade-service" }
+lemonade-observability = { path = "lemonade-observability" }
 
 # Observability
 tracing = "0.1"
@@ -48,8 +52,8 @@ opentelemetry = { version = "0.31.0", features = ["trace", "metrics", "logs"] }
 opentelemetry-otlp = { version = "0.31.0", features = ["trace", "metrics", "logs"] }
 opentelemetry_sdk = { version = "0.31.0", features = ["trace", "metrics", "logs", "rt-tokio"] }
 opentelemetry-semantic-conventions = "0.31.0"
-prometheus = "0.14.0"
 opentelemetry-stdout = "0.31.0"
+prometheus = "0.14.0"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
@@ -64,3 +68,19 @@ homepage = ""
 repository = ""
 documentation = ""
 publish = false
+
+# Profiles tuned for perf measurements and flamegraph support
+[profile.dev]
+opt-level = 1          # faster debug builds with some optimization
+debug = true           # keep symbols for profiling/flamegraphs
+split-debuginfo = "packed"
+
+[profile.release]
+opt-level = 3
+debug = true           # keep symbols for perf/flamegraph
+lto = "thin"
+codegen-units = 1
+split-debuginfo = "packed"
+
+[profile.bench]
+inherits = "release"

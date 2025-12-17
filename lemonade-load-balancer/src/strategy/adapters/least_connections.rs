@@ -14,27 +14,24 @@ impl StrategyService for LeastConnectionsStrategy {
         &self,
         ctx: Arc<Context>,
     ) -> Result<BackendMeta, StrategyError> {
-        let healthy = ctx.healthy_backends();
+        let routing = ctx.routing_table();
+        let healthy = routing.healthy_backends();
 
         if healthy.is_empty() {
             return Err(StrategyError::NoBackendAvailable);
         }
 
-        // Load connection registry and routing table once
-        let connections = ctx.connection_registry();
-        let routing = ctx.routing_table();
-
         // Find backend with least connections
         let backend = healthy
             .iter()
-            .min_by_key(|b| {
-                routing
-                    .find_index(*b.id())
-                    .map(|idx| connections.get(idx))
-                    .unwrap_or(usize::MAX)
-            })
+            .min_by_key(|b| b.active_connections())
             .ok_or(StrategyError::NoBackendAvailable)?;
 
-        Ok(backend.clone())
+        Ok(BackendMeta::new(
+            backend.id(),
+            backend.name(),
+            backend.address(),
+            backend.weight(),
+        ))
     }
 }

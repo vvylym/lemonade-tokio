@@ -31,7 +31,7 @@ impl Default for AdaptiveWeights {
     }
 }
 
-/// Scoring context containing normalized maximum values and registries
+/// Scoring context containing normalized maximum values
 ///
 /// This context is prepared once per backend selection and contains
 /// all the necessary data for computing scores without repeated lookups.
@@ -42,10 +42,6 @@ pub struct ScoringContext {
     pub max_latency_ms: f64,
     /// Maximum weight across all backends (for normalization)
     pub max_weight: f64,
-    /// Connection registry for looking up connection counts
-    pub connections: Arc<ConnectionRegistry>,
-    /// Metrics snapshot for looking up performance metrics
-    pub metrics: Arc<MetricsSnapshot>,
-    /// Routing table for looking up backend indices
+    /// Routing table for looking up backends
     pub routing: Arc<RouteTable>,
 }

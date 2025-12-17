@@ -1,4 +1,3 @@
 listen_address = "127.0.0.1:50510"
 service_name = "lemonade-worker-1"
 work_delay = 20
-

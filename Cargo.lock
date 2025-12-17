@@ -724,10 +724,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "dotenv"
-version = "0.15.0"
+name = "dotenvy"
+version = "0.15.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "77c90badedccf4105eca100756a0b1289e191f6fcbdadd3cee1d2f614f97da8f"
+checksum = "1aaf95b3e5c8f23aa320147307562d361db0ae0d51242340f558153b4eb2439b"
 
 [[package]]
 name = "downcast"
@@ -1449,7 +1449,7 @@ dependencies = [
  "arc-swap",
  "async-trait",
  "dashmap",
- "dotenv",
+ "dotenvy",
  "lemonade-observability",
  "mockall",
  "notify",
@@ -1486,16 +1486,17 @@ name = "lemonade-service"
 version = "0.1.0"
 dependencies = [
  "async-trait",
- "dotenv",
+ "dotenvy",
  "proptest",
  "quickcheck",
  "rstest",
  "serde",
  "serde_json",
  "serde_yaml",
+ "tempfile",
  "thiserror 2.0.17",
  "tokio",
- "toml 0.8.23",
+ "toml 0.9.8",
 ]
 
 [[package]]
@@ -1503,8 +1504,10 @@ name = "lemonade-worker-actix"
 version = "0.1.0"
 dependencies = [
  "actix-web",
+ "lemonade-observability",
  "lemonade-service",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
@@ -1512,10 +1515,12 @@ name = "lemonade-worker-axum"
 version = "0.1.0"
 dependencies = [
  "axum",
+ "lemonade-observability",
  "lemonade-service",
  "tokio",
  "tower",
  "tower-http",
+ "tracing",
 ]
 
 [[package]]
@@ -1525,18 +1530,22 @@ dependencies = [
  "http-body-util",
  "hyper 1.8.1",
  "hyper-util",
+ "lemonade-observability",
  "lemonade-service",
  "serde_json",
  "tokio",
+ "tracing",
 ]
 
 [[package]]
 name = "lemonade-worker-rocket"
 version = "0.1.0"
 dependencies = [
+ "lemonade-observability",
  "lemonade-service",
  "rocket",
  "tokio",
+ "tracing",
 ]
 
 [[package]]

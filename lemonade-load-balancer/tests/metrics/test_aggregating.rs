@@ -22,105 +22,98 @@ async fn aggregating_metrics_service_new_should_succeed() {
 }
 
 #[tokio::test]
-async fn aggregating_metrics_service_start_aggregates_events_should_succeed() {
+async fn aggregating_metrics_service_collect_metrics_should_succeed() {
     // Given: a running service and context
     let config = MetricsConfig {
-        interval: Duration::from_millis(1),
+        interval: Duration::from_millis(10),
         timeout: Duration::from_millis(1),
     };
-    let service = AggregatingMetricsService::new(Arc::new(ArcSwap::from_pointee(config)))
-        .expect("Failed to create service");
+    let service = Arc::new(
+        AggregatingMetricsService::new(Arc::new(ArcSwap::from_pointee(config)))
+            .expect("Failed to create service"),
+    );
     let ctx = create_test_context(vec![]);
 
-    // When: starting the service
-    let start_result = service.start(ctx.clone()).await;
+    // Spawn collect_metrics in background
+    let service = Arc::new(service);
+    let service_clone = service.clone();
+    let ctx_clone = ctx.clone();
+    let metrics_handle = tokio::spawn(async move {
+        service_clone.collect_metrics(ctx_clone).await;
+    });
 
-    // Then: service starts successfully
-    assert!(start_result.is_ok());
+    // Wait a bit for service to start
+    tokio::time::sleep(Duration::from_millis(10)).await;
 
-    // Cleanup
-    service.shutdown().await.expect("Failed to shutdown");
+    // Send shutdown signal
+    let _ = ctx.channels().shutdown_tx().send(());
+
+    // Wait for service to stop
+    let _ = tokio::time::timeout(Duration::from_millis(100), metrics_handle).await;
 }
 
 #[tokio::test]
-async fn aggregating_metrics_service_snapshot_returns_aggregated_metrics_should_succeed()
-{
-    // Given: a service with aggregated events
+async fn aggregating_metrics_service_processes_events_should_succeed() {
+    // Given: a service with context and backends
     let config = MetricsConfig {
-        interval: Duration::from_millis(1),
+        interval: Duration::from_millis(10),
         timeout: Duration::from_millis(1),
     };
-    let service = AggregatingMetricsService::new(Arc::new(ArcSwap::from_pointee(config)))
-        .expect("Failed to create service");
-    let ctx = create_test_context(vec![]);
+    let service = Arc::new(
+        AggregatingMetricsService::new(Arc::new(ArcSwap::from_pointee(config)))
+            .expect("Failed to create service"),
+    );
 
-    // Start service first (this takes ownership of the receiver)
-    service
-        .start(ctx.clone())
-        .await
-        .expect("Failed to start service");
+    let backend = BackendMeta::new(
+        0u8,
+        Some("test"),
+        "127.0.0.1:8080".parse::<std::net::SocketAddr>().unwrap(),
+        Some(10u8),
+    );
+    let ctx = create_test_context(vec![backend]);
 
-    // Wait a bit for service to initialize
+    // Spawn collect_metrics in background
+    let service = Arc::new(service);
+    let service_clone = service.clone();
+    let ctx_clone = ctx.clone();
+    let metrics_handle = tokio::spawn(async move {
+        service_clone.collect_metrics(ctx_clone).await;
+    });
+
+    // Wait a bit for service to start
     tokio::time::sleep(Duration::from_millis(10)).await;
 
-    // Send some metrics events
-    let metrics_tx = ctx.channel_bundle().metrics_sender();
+    // Send metrics events
+    let metrics_tx = ctx.channels().metrics_tx();
     let _ = metrics_tx
         .send(MetricsEvent::ConnectionOpened {
             backend_id: 0,
             at_micros: 1000,
+        })
+        .await;
+    let _ = metrics_tx
+        .send(MetricsEvent::ConnectionClosed {
+            backend_id: 0,
+            duration_micros: 5000,
+            bytes_in: 100,
+            bytes_out: 200,
         })
         .await;
 
     // Wait a bit for event processing
-    tokio::time::sleep(Duration::from_millis(20)).await;
+    tokio::time::sleep(Duration::from_millis(50)).await;
 
-    // When: calling snapshot()
-    let snapshot_result = service.snapshot().await;
+    // Check that backend metrics were updated
+    let routing = ctx.routing_table();
+    if let Some(backend) = routing.get(0) {
+        let metrics = backend.metrics_snapshot();
+        // Check that metrics were updated (either latency or error rate)
+        assert!(metrics.avg_latency_ms > 0.0 || metrics.error_rate > 0.0);
+    }
 
-    // Then: returns aggregated MetricsSnapshot
-    assert!(snapshot_result.is_ok());
-    let _snapshot = snapshot_result.expect("Failed to get snapshot");
-    // Should have metrics for backend 0 (if event was processed)
-    // Note: This may not always pass if event processing is slow, but it verifies the service works
+    // Send shutdown signal
+    let _ = ctx.channels().shutdown_tx().send(());
 
-    // Cleanup
-    service.shutdown().await.expect("Failed to shutdown");
-}
-
-#[tokio::test]
-async fn aggregating_metrics_service_periodic_update_updates_context_should_succeed() {
-    // Given: a running service with aggregated metrics
-    let config = MetricsConfig {
-        interval: Duration::from_millis(10), // Short interval for test
-        timeout: Duration::from_millis(1),
-    };
-    let service = AggregatingMetricsService::new(Arc::new(ArcSwap::from_pointee(config)))
-        .expect("Failed to create service");
-    let ctx = create_test_context(vec![]);
-
-    service
-        .start(ctx.clone())
-        .await
-        .expect("Failed to start service");
-
-    // Send metrics events
-    let metrics_tx = ctx.channel_bundle().metrics_sender();
-    let _ = metrics_tx
-        .send(MetricsEvent::ConnectionOpened {
-            backend_id: 0,
-            at_micros: 1000,
-        })
-        .await;
-
-    // Wait for interval to elapse
-    tokio::time::sleep(Duration::from_millis(30)).await;
-
-    // When: interval elapses
-    // Then: context metrics snapshot is updated
-    let _ = ctx.metrics_snapshot();
-    // Metrics should be updated in context (verification would require checking snapshot content)
-
-    // Cleanup
-    service.shutdown().await.expect("Failed to shutdown");
+    // Wait for service to stop
+    let _ = tokio::time::timeout(Duration::from_millis(100), metrics_handle).await;
 }

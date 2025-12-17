@@ -1,297 +1,281 @@
-//! State module
+//! Context module
 //!
+//! Shared context for load balancer services with encapsulation
+
 use crate::prelude::*;
 pub use error::ContextError;
+use std::sync::Mutex;
+use tokio::sync::Notify;
 
-/// App state struct
+/// App context struct - all fields private for encapsulation
 pub struct Context {
-    /// Routing table
+    // All fields private
+    config: ArcSwap<Config>,
     route_table: ArcSwap<RouteTable>,
-    /// Dynamic Strategy
     strategy: ArcSwap<Arc<dyn StrategyService>>,
-    /// Connection registry
-    connections: ArcSwap<ConnectionRegistry>,
-    /// Health registry
-    health: ArcSwap<HealthRegistry>,
-    /// Metrics registry
-    metrics: ArcSwap<MetricsSnapshot>,
-    /// Channels
-    channels: ArcSwap<ChannelBundle>,
-    /// Channel version sender
-    channel_version_tx: watch::Sender<u64>,
-    /// Notify
-    notify: Notify,
-    /// Drain timeout duration
-    drain_timeout_duration: Duration,
-    /// Background handle timeout duration
-    background_handle_timeout: Duration,
-    /// Accept handle timeout duration
-    accept_handle_timeout: Duration,
-    /// Metrics receiver
-    metrics_rx: ArcSwap<MpscReceiver<MetricsEvent>>,
-    /// Health receiver
-    health_rx: ArcSwap<MpscReceiver<HealthEvent>>,
-    /// Shutdown receiver
-    shutdown_tx: BroadcastSender<()>,
+    channels: Arc<ChannelBundle>,
+    migration_lock: Mutex<()>,
+    // Notify for connection drain waiting
+    connection_notify: Arc<Notify>,
 }
 
 impl Context {
-    /// Create a new state
-    pub fn new(config: &Config) -> Result<Self, ContextError> {
-        // create channel bundle from config
-        let (bundle, metrics_rx, health_rx) =
-            ChannelBundle::new(config.runtime.metrics_cap, config.runtime.health_cap);
-        // create channel version sender
-        let (tx, _) = watch::channel(0u64);
-        // create shutdown channel
-        let (shutdown_tx, _) = broadcast::channel::<()>(1);
+    /// Create a new context from config
+    pub fn new(config: Config) -> Result<Self, ContextError> {
+        // Create channel bundle
+        let channels = Arc::new(ChannelBundle::new(
+            config.runtime.metrics_cap,
+            config.runtime.health_cap,
+            config.runtime.metrics_cap, // Use metrics_cap for connection_cap
+            100,                        // backend_failure_cap
+        ));
 
+        // Create route table from backend configs
+        let route_table = ArcSwap::from_pointee(RouteTable::new(config.backends.clone()));
+
+        // Build strategy (convert BackendConfig to BackendMeta for compatibility)
+        let backend_metas: Vec<BackendMeta> = config
+            .backends
+            .iter()
+            .map(|c| BackendMeta::new(c.id, c.name.clone(), c.address, c.weight))
+            .collect();
         let strategy = StrategyBuilder::new()
             .with_strategy(config.strategy.clone())
-            .with_backends(config.backends.clone())
+            .with_backends(backend_metas)
             .build()?;
 
-        // return state
         Ok(Self {
-            route_table: ArcSwap::from_pointee(RouteTable::new(config.backends.clone())),
+            config: ArcSwap::from_pointee(config),
+            route_table,
             strategy: ArcSwap::from_pointee(strategy),
-            metrics: ArcSwap::from_pointee(MetricsSnapshot::default()),
-            connections: ArcSwap::from_pointee(ConnectionRegistry::new(0)),
-            health: ArcSwap::from_pointee(HealthRegistry::new(0)),
-            channels: ArcSwap::from_pointee(bundle),
-            channel_version_tx: tx,
-            notify: Notify::new(),
-            drain_timeout_duration: Duration::from_millis(
-                config.runtime.drain_timeout_millis,
-            ),
-            background_handle_timeout: Duration::from_millis(
-                config.runtime.background_timeout_millis,
-            ),
-            accept_handle_timeout: Duration::from_millis(
-                config.runtime.accept_timeout_millis,
-            ),
-            metrics_rx: ArcSwap::from_pointee(metrics_rx),
-            health_rx: ArcSwap::from_pointee(health_rx),
-            shutdown_tx,
+            channels,
+            migration_lock: Mutex::new(()),
+            connection_notify: Arc::new(Notify::new()),
         })
     }
 
-    /// Get healthy backends (for strategies)
-    /// Returns Vec<BackendMeta> - cloned backend metadata
-    pub fn healthy_backends(&self) -> Vec<BackendMeta> {
-        let routing = self.routing_table();
-        let health = self.health_registry();
+    // Getters (no direct field access)
 
-        routing
-            .filter_healthy(&health)
-            .into_iter()
-            .map(|(_, meta)| meta.clone())
-            .collect()
+    /// Get config
+    pub fn config(&self) -> Arc<Config> {
+        self.config.load_full()
     }
 
-    //========================================================================//
-    //
-    // Loaders (these are necessary for services to access attributes)
-    //
-    //========================================================================//
-
-    /// Load strategy
-    pub fn strategy(&self) -> Arc<Arc<dyn StrategyService>> {
-        self.strategy.load_full()
-    }
-
-    /// Load routing table
+    /// Get routing table
     pub fn routing_table(&self) -> Arc<RouteTable> {
         self.route_table.load_full()
     }
 
-    /// Get channel bundle (for services to send events)
-    pub fn channel_bundle(&self) -> Arc<ChannelBundle> {
-        self.channels.load_full()
+    /// Get strategy
+    pub fn strategy(&self) -> Arc<Arc<dyn StrategyService>> {
+        self.strategy.load_full()
     }
 
-    /// Load routing table
-    pub fn connection_registry(&self) -> Arc<ConnectionRegistry> {
-        self.connections.load_full()
+    /// Get channels
+    pub fn channels(&self) -> &ChannelBundle {
+        &self.channels
     }
 
-    /// Load health registry
-    pub fn health_registry(&self) -> Arc<HealthRegistry> {
-        self.health.load_full()
+    // Private setters (used internally by migrate)
+
+    fn set_config(&self, config: Arc<Config>) {
+        self.config.store(config);
     }
 
-    /// Load metrics snapshot
-    pub fn metrics_snapshot(&self) -> Arc<MetricsSnapshot> {
-        self.metrics.load_full()
-    }
-
-    //========================================================================//
-    //
-    // Swappers (for config updates)
-    //
-    //========================================================================//
-
-    /// Set channel bundle (for config service)
-    pub fn set_channel_bundle(
-        &self,
-        new_bundle: Arc<ChannelBundle>,
-        new_metrics_rx: MpscReceiver<MetricsEvent>,
-        new_health_rx: MpscReceiver<HealthEvent>,
-    ) {
-        let old = self.channels.swap(new_bundle);
-        self.metrics_rx.store(Arc::new(new_metrics_rx));
-        self.health_rx.store(Arc::new(new_health_rx));
-        let _ = self
-            .channel_version_tx
-            .send(self.channel_version_tx.borrow().wrapping_add(1));
-        drop(old);
-    }
-
-    /// Update timeouts (for config service)
-    pub fn set_timeouts(
-        &mut self,
-        drain: Option<Duration>,
-        background: Option<Duration>,
-        accept: Option<Duration>,
-    ) {
-        if let Some(d) = drain {
-            self.drain_timeout_duration = d;
-        }
-        if let Some(b) = background {
-            self.background_handle_timeout = b;
-        }
-        if let Some(a) = accept {
-            self.accept_handle_timeout = a;
-        }
-    }
-
-    /// Swap routing table
-    pub fn set_routing_table(&self, rt: Arc<RouteTable>) {
-        self.route_table.store(rt);
-    }
-
-    /// Swap connection registry
-    pub fn set_connection_registry(&self, cr: Arc<ConnectionRegistry>) {
-        self.connections.store(cr);
-    }
-
-    /// Swap health registry
-    pub fn set_health_registry(&self, hr: Arc<HealthRegistry>) {
-        self.health.store(hr);
-    }
-
-    /// Swap metrics snapshot
-    pub fn set_metrics_snapshot(&self, ms: Arc<MetricsSnapshot>) {
-        self.metrics.store(ms);
-    }
-
-    /// Swap strategy
-    pub fn set_strategy(&self, strategy: Arc<dyn StrategyService>) {
+    fn set_strategy(&self, strategy: Arc<dyn StrategyService>) {
         self.strategy.store(Arc::new(strategy));
     }
 
-    /// Update backends while preserving connection counts
-    pub fn set_backends(&self, backends: Vec<BackendMeta>) -> Result<(), ContextError> {
+    fn set_routing_table(&self, rt: Arc<RouteTable>) {
+        self.route_table.store(rt);
+    }
+
+    /// Migrate to new config (handles backend draining, config/strategy update, listen address change)
+    pub async fn migrate(&self, new_config: Config) -> Result<(), ContextError> {
+        // Acquire migration lock for critical section
+        let _lock = self.migration_lock.lock().unwrap();
+
+        let old_config = self.config();
         let old_routing = self.routing_table();
-        let old_connections = self.connection_registry();
-        let old_health = self.health_registry();
 
-        // Calculate new capacity
-        let max_id = backends.iter().map(|b| *b.id() as usize).max().unwrap_or(0);
-        let new_cap = max_id + 1;
-        let old_cap = old_routing.len();
+        // Check if listen address changed
+        if old_config.proxy.listen_address != new_config.proxy.listen_address {
+            let _ = self
+                .channels
+                .config_tx()
+                .send(ConfigEvent::ListenAddressChanged(
+                    new_config.proxy.listen_address,
+                ));
+        }
 
-        // Build ID mapping: old index -> new index
-        let id_mapping: Vec<Option<usize>> = (0..old_cap)
-            .map(|old_idx| {
-                old_routing.get_by_index(old_idx).and_then(|b| {
-                    backends.iter().position(|new_b| *new_b.id() == *b.id())
-                })
-            })
-            .collect();
+        // Compare old vs new backends
+        let old_backends: std::collections::HashMap<BackendId, Arc<Backend>> =
+            old_routing
+                .all_backends()
+                .into_iter()
+                .map(|b| (b.id(), b))
+                .collect();
 
-        // Migrate connection counts
-        let new_connections = old_connections.migrate(new_cap, &id_mapping);
+        let new_backend_configs: std::collections::HashMap<BackendId, BackendConfig> =
+            new_config
+                .backends
+                .iter()
+                .map(|c| (c.id, c.clone()))
+                .collect();
 
-        // Migrate health status
-        let new_health = old_health.migrate(new_cap, &id_mapping);
+        // Identify backends to drain (removed or changed)
+        let mut to_drain: Vec<Arc<Backend>> = Vec::new();
+        let mut to_add: Vec<BackendConfig> = Vec::new();
+
+        // Check for removed or changed backends
+        for (id, old_backend) in &old_backends {
+            if let Some(new_config) = new_backend_configs.get(id) {
+                // Backend exists - check if changed
+                let old_addr = old_backend.address();
+                let old_name = old_backend.name();
+                if new_config.address != old_addr
+                    || new_config.name.as_deref() != old_name
+                    || new_config.weight != old_backend.weight()
+                {
+                    // Backend changed - mark old as draining
+                    to_drain.push(old_backend.clone());
+                    to_add.push(new_config.clone());
+                }
+            } else {
+                // Backend removed - mark as draining
+                to_drain.push(old_backend.clone());
+            }
+        }
+
+        // Check for new backends
+        for (id, new_config) in &new_backend_configs {
+            if !old_backends.contains_key(id) {
+                to_add.push(new_config.clone());
+            }
+        }
+
+        // Mark backends as draining
+        for backend in &to_drain {
+            backend.mark_draining();
+        }
 
         // Create new route table
-        let new_routing = RouteTable::new(backends);
+        let mut new_backends: Vec<Arc<Backend>> = old_routing
+            .all_backends()
+            .into_iter()
+            .filter(|b| !to_drain.iter().any(|d| d.id() == b.id()))
+            .collect();
 
-        // Update strategy if needed (check if strategy or weights changed)
-        // This would be done by config service after calling update_backends
+        // Add new backends
+        for config in &to_add {
+            new_backends.push(Arc::new(Backend::new(config.clone())));
+        }
 
-        // Swap all registries atomically
-        self.route_table.store(Arc::new(new_routing));
-        self.connections.store(Arc::new(new_connections));
-        self.health.store(Arc::new(new_health));
+        // Create new route table
+        let new_route_table = RouteTable::default();
+        for backend in new_backends {
+            new_route_table.insert(backend);
+        }
+
+        // Prepare strategy update (convert BackendConfig to BackendMeta)
+        let backend_metas: Vec<BackendMeta> = new_config
+            .backends
+            .iter()
+            .map(|c| BackendMeta::new(c.id, c.name.clone(), c.address, c.weight))
+            .collect();
+        let new_strategy = StrategyBuilder::new()
+            .with_strategy(new_config.strategy.clone())
+            .with_backends(backend_metas)
+            .build()?;
+
+        // Release lock before await (waiting for drain)
+        drop(_lock);
+
+        // Wait for draining backends to have 0 connections (with timeout)
+        let drain_timeout =
+            Duration::from_millis(new_config.runtime.drain_timeout_millis);
+        let start = std::time::Instant::now();
+
+        while start.elapsed() < drain_timeout {
+            let all_drained = to_drain
+                .iter()
+                .all(|backend| backend.active_connections() == 0);
+
+            if all_drained {
+                break;
+            }
+
+            // Wait a bit before checking again
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+
+        // Re-acquire lock for final updates
+        let _lock2 = self.migration_lock.lock().unwrap();
+
+        // Update config, strategy, route table atomically
+        self.set_config(Arc::new(new_config.clone()));
+        self.set_strategy(new_strategy);
+        self.set_routing_table(Arc::new(new_route_table));
+
+        // Broadcast ConfigEvent::Migrated
+        let _ = self.channels.config_tx().send(ConfigEvent::Migrated);
 
         Ok(())
     }
 
-    //========================================================================//
-    //
-    // Channels
-    //
-    //========================================================================//
+    /// Wait for all connections to drain (for shutdown)
+    pub async fn wait_for_drain(&self, timeout: Duration) -> Result<(), ContextError> {
+        let start = std::time::Instant::now();
 
-    /// Get metrics receiver (services take ownership when needed)
-    pub fn metrics_receiver(&self) -> Arc<MpscReceiver<MetricsEvent>> {
-        self.metrics_rx.load_full().clone()
-    }
+        while start.elapsed() < timeout {
+            let routing = self.routing_table();
+            let total_connections: usize = routing
+                .all_backends()
+                .iter()
+                .map(|b| b.active_connections())
+                .sum();
 
-    /// Get health receiver (services take ownership when needed)
-    pub fn health_receiver(&self) -> Arc<MpscReceiver<HealthEvent>> {
-        self.health_rx.load_full().clone()
-    }
+            if total_connections == 0 {
+                return Ok(());
+            }
 
-    /// keep_alive awaits notification with a small sleep to avoid busy loops
-    pub async fn keep_alive(&self) -> Result<(), std::io::Error> {
-        // notify is signaled by connection handlers on disconnect; we wait with timeout
-        self.notify.notified().await;
+            // Wait for notification or timeout
+            let remaining = timeout - start.elapsed();
+            if remaining.is_zero() {
+                break;
+            }
+
+            tokio::select! {
+                _ = self.connection_notify.notified() => {
+                    // Connection closed, check again
+                }
+                _ = tokio::time::sleep(Duration::from_millis(100)) => {
+                    // Timeout, check again
+                }
+            }
+        }
+
+        // Check one more time
+        let routing = self.routing_table();
+        let total_connections: usize = routing
+            .all_backends()
+            .iter()
+            .map(|b| b.active_connections())
+            .sum();
+
+        if total_connections > 0 {
+            return Err(ContextError::DrainTimeout(format!(
+                "{} connections still active after timeout",
+                total_connections
+            )));
+        }
+
         Ok(())
     }
 
-    /// Notify connection closed (for drain logic - uses notify)
+    /// Notify that a connection was closed (for drain waiting)
     pub fn notify_connection_closed(&self) {
-        self.notify.notify_one();
-    }
-
-    /// Get channel version receiver (for config service to notify consumers)
-    pub fn channel_version_receiver(&self) -> watch::Receiver<u64> {
-        self.channel_version_tx.subscribe()
-    }
-
-    /// Get shutdown sender (for config service to notify shutdown)
-    pub fn shutdown_sender(&self) -> BroadcastSender<()> {
-        self.shutdown_tx.clone()
-    }
-
-    /// Get shutdown receiver (for config service to notify shutdown)
-    pub fn shutdown_receiver(&self) -> BroadcastReceiver<()> {
-        self.shutdown_tx.subscribe()
-    }
-
-    //========================================================================//
-    //
-    // Timeout getters
-    //
-    //========================================================================//
-
-    /// Get drain timeout duration
-    pub fn drain_timeout(&self) -> Duration {
-        self.drain_timeout_duration
-    }
-
-    /// Get background handle timeout duration
-    pub fn background_handle_timeout(&self) -> Duration {
-        self.background_handle_timeout
-    }
-
-    /// Get accept handle timeout duration
-    pub fn accept_handle_timeout(&self) -> Duration {
-        self.accept_handle_timeout
+        self.connection_notify.notify_one();
     }
 }
 
@@ -300,11 +284,14 @@ mod error {
     //!
     use crate::prelude::*;
 
-    /// State error enum
+    /// Context error enum
     #[derive(Debug, thiserror::Error)]
     pub enum ContextError {
         /// Strategy builder error
         #[error("strategy builder error: {0}")]
         StrategyBuilder(#[from] StrategyError),
+        /// Drain timeout error
+        #[error("drain timeout: {0}")]
+        DrainTimeout(String),
     }
 }

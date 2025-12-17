@@ -3,17 +3,10 @@
 use crate::prelude::*;
 
 /// Metrics service trait
-#[cfg_attr(test, mockall::automock)]
 #[async_trait]
 pub trait MetricsService: Send + Sync + 'static {
-    /// Snapshot the metrics
-    async fn snapshot(&self) -> Result<MetricsSnapshot, MetricsError>;
-
-    /// Start the metrics service
-    async fn start(&self, ctx: Arc<Context>) -> Result<(), MetricsError>;
-
-    /// Shutdown the metrics service
-    async fn shutdown(&self) -> Result<(), MetricsError>;
+    /// Collect and aggregate metrics (loops until shutdown)
+    async fn collect_metrics(&self, ctx: Arc<Context>);
 }
 
 #[cfg(test)]
@@ -22,14 +15,6 @@ mockall::mock! {
 
     #[async_trait]
     impl MetricsService for MockMetricsServiceSuccess {
-        async fn snapshot(&self) -> Result<MetricsSnapshot, MetricsError> {
-            Ok(MetricsSnapshot::default())
-        }
-        async fn start(&self, _ctx: Arc<Context>) -> Result<(), MetricsError> {
-            Ok(())
-        }
-        async fn shutdown(&self) -> Result<(), MetricsError> {
-            Ok(())
-        }
+        async fn collect_metrics(&self, _ctx: Arc<Context>) {}
     }
 }

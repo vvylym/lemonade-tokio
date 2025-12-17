@@ -55,10 +55,18 @@ pub fn create_test_config(
         drain_timeout_millis: 5000,
         background_timeout_millis: 1000,
         accept_timeout_millis: 2000,
+        config_watch_interval_millis: 1000,
     })]
     runtime: RuntimeConfig,
 ) -> Config {
+    // Convert BackendMeta to BackendConfig
+    let backend_configs: Vec<BackendConfig> = backends
+        .iter()
+        .map(|meta| BackendConfig::from(meta.clone()))
+        .collect();
+
     Config {
+        source: ConfigSource::Environment,
         runtime: runtime.clone(),
         proxy: ProxyConfig {
             listen_address: SocketAddr::new(
@@ -68,7 +76,7 @@ pub fn create_test_config(
             max_connections: Some(1000),
         },
         strategy,
-        backends: backends.clone(),
+        backends: backend_configs,
         health: HealthConfig {
             interval: Duration::from_secs(5),
             timeout: Duration::from_secs(1),
@@ -99,6 +107,7 @@ pub fn create_test_config_fast(
             drain_timeout_millis: 100,
             background_timeout_millis: 50,
             accept_timeout_millis: 50,
+            config_watch_interval_millis: 100,
         },
     )
 }
@@ -121,12 +130,10 @@ pub fn create_test_context(
             drain_timeout_millis: 5000,
             background_timeout_millis: 1000,
             accept_timeout_millis: 2000,
+            config_watch_interval_millis: 100,
         },
     );
-    let ctx = Arc::new(Context::new(&config).expect("Failed to create context"));
-    ctx.set_backends(backend_list)
-        .expect("Failed to set backends");
-    ctx
+    Arc::new(Context::new(config).expect("Failed to create context"))
 }
 
 /// Create a test context with a single backend

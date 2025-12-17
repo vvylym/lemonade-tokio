@@ -1,28 +1,20 @@
 //! Tests for App module
 //!
+use lemonade_load_balancer::App;
 use lemonade_load_balancer::prelude::*;
-use lemonade_load_balancer::{App, spawn_background_handle};
 use std::sync::Arc;
 
 use crate::common::fixtures::create_test_config_fast;
 
 // Mock service implementations
-struct MockConfigService {
-    config: Config,
-}
+struct MockConfigService;
 
 #[async_trait]
 impl ConfigService for MockConfigService {
-    fn snapshot(&self) -> Config {
-        self.config.clone()
-    }
-
-    async fn start(&self, _ctx: Arc<Context>) -> Result<(), ConfigError> {
-        Ok(())
-    }
-
-    async fn shutdown(&self) -> Result<(), ConfigError> {
-        Ok(())
+    async fn watch_config(&self, ctx: Arc<Context>) {
+        // Just wait for shutdown
+        let mut shutdown_rx = ctx.channels().shutdown_rx();
+        let _ = shutdown_rx.recv().await;
     }
 }
 
@@ -30,12 +22,10 @@ struct MockHealthService;
 
 #[async_trait]
 impl HealthService for MockHealthService {
-    async fn start(&self, _ctx: Arc<Context>) -> Result<(), HealthError> {
-        Ok(())
-    }
-
-    async fn shutdown(&self) -> Result<(), HealthError> {
-        Ok(())
+    async fn check_health(&self, ctx: Arc<Context>) {
+        // Just wait for shutdown
+        let mut shutdown_rx = ctx.channels().shutdown_rx();
+        let _ = shutdown_rx.recv().await;
     }
 }
 
@@ -43,16 +33,10 @@ struct MockMetricsService;
 
 #[async_trait]
 impl MetricsService for MockMetricsService {
-    async fn snapshot(&self) -> Result<MetricsSnapshot, MetricsError> {
-        Ok(MetricsSnapshot::default())
-    }
-
-    async fn start(&self, _ctx: Arc<Context>) -> Result<(), MetricsError> {
-        Ok(())
-    }
-
-    async fn shutdown(&self) -> Result<(), MetricsError> {
-        Ok(())
+    async fn collect_metrics(&self, ctx: Arc<Context>) {
+        // Just wait for shutdown
+        let mut shutdown_rx = ctx.channels().shutdown_rx();
+        let _ = shutdown_rx.recv().await;
     }
 }
 
@@ -60,17 +44,17 @@ struct MockProxyService;
 
 #[async_trait]
 impl ProxyService for MockProxyService {
-    async fn accept_connections(&self, _ctx: &Arc<Context>) -> Result<(), ProxyError> {
+    async fn accept_connections(&self, ctx: Arc<Context>) -> Result<(), ProxyError> {
+        // Wait for shutdown
+        let mut shutdown_rx = ctx.channels().shutdown_rx();
+        let _ = shutdown_rx.recv().await;
         Ok(())
     }
 }
 
 #[tokio::test]
 async fn app_new_should_succeed() {
-    let config = create_test_config_fast(vec![], Strategy::RoundRobin);
-    let config_service: Arc<dyn ConfigService> = Arc::new(MockConfigService {
-        config: config.clone(),
-    });
+    let config_service: Arc<dyn ConfigService> = Arc::new(MockConfigService);
     let health_service: Arc<dyn HealthService> = Arc::new(MockHealthService);
     let metrics_service: Arc<dyn MetricsService> = Arc::new(MockMetricsService);
     let proxy_service: Arc<dyn ProxyService> = Arc::new(MockProxyService);
@@ -87,14 +71,14 @@ async fn app_new_should_succeed() {
 #[tokio::test]
 async fn app_run_creates_context_and_spawns_handles_should_succeed() {
     let config = create_test_config_fast(vec![], Strategy::RoundRobin);
-    let config_service: Arc<dyn ConfigService> = Arc::new(MockConfigService {
-        config: config.clone(),
-    });
+    let ctx = Arc::new(Context::new(config).expect("Failed to create context"));
+
+    let config_service: Arc<dyn ConfigService> = Arc::new(MockConfigService);
     let health_service: Arc<dyn HealthService> = Arc::new(MockHealthService);
     let metrics_service: Arc<dyn MetricsService> = Arc::new(MockMetricsService);
     let proxy_service: Arc<dyn ProxyService> = Arc::new(MockProxyService);
 
-    let _app = App::new(
+    let app = App::new(
         config_service.clone(),
         health_service.clone(),
         metrics_service.clone(),
@@ -102,31 +86,32 @@ async fn app_run_creates_context_and_spawns_handles_should_succeed() {
     )
     .await;
 
-    let config_snapshot = config_service.snapshot();
-    let ctx = Arc::new(Context::new(&config_snapshot).expect("Failed to create context"));
+    // Spawn app.run() in background since it waits for shutdown
+    let ctx_clone = ctx.clone();
+    let app_handle = tokio::spawn(async move {
+        let _ = app.run(ctx_clone).await;
+    });
 
-    let config_handle = spawn_background_handle!(config_service, &ctx);
-    let health_handle = spawn_background_handle!(health_service, &ctx);
-    let metrics_handle = spawn_background_handle!(metrics_service, &ctx);
-    let _accept_handle = proxy_service.accept_connections(&ctx);
+    // Wait a bit for services to start
+    tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
 
-    assert!(!config_handle.is_finished());
-    assert!(!health_handle.is_finished());
-    assert!(!metrics_handle.is_finished());
+    // Verify app is running (not finished)
+    assert!(!app_handle.is_finished());
 
-    config_handle.abort();
-    health_handle.abort();
-    metrics_handle.abort();
+    // Send shutdown signal
+    let _ = ctx.channels().shutdown_tx().send(());
+
+    // Wait a bit for shutdown
+    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
+    // Cleanup
+    app_handle.abort();
 }
 
 #[tokio::test]
 async fn app_new_with_different_services_should_succeed() {
-    let config1 = create_test_config_fast(vec![], Strategy::RoundRobin);
-    let config2 = create_test_config_fast(vec![], Strategy::RoundRobin);
-    let config_service1: Arc<dyn ConfigService> =
-        Arc::new(MockConfigService { config: config1 });
-    let config_service2: Arc<dyn ConfigService> =
-        Arc::new(MockConfigService { config: config2 });
+    let config_service1: Arc<dyn ConfigService> = Arc::new(MockConfigService);
+    let config_service2: Arc<dyn ConfigService> = Arc::new(MockConfigService);
     let health_service: Arc<dyn HealthService> = Arc::new(MockHealthService);
     let metrics_service: Arc<dyn MetricsService> = Arc::new(MockMetricsService);
     let proxy_service: Arc<dyn ProxyService> = Arc::new(MockProxyService);
@@ -150,23 +135,47 @@ async fn app_new_with_different_services_should_succeed() {
 #[tokio::test]
 async fn app_run_creates_context_should_succeed() {
     let config = create_test_config_fast(vec![], Strategy::RoundRobin);
-    let config_service: Arc<dyn ConfigService> = Arc::new(MockConfigService {
-        config: config.clone(),
-    });
+    let ctx_result = Context::new(config);
+
+    assert!(ctx_result.is_ok());
+}
+
+#[tokio::test]
+async fn app_run_spawns_proxy_service_should_succeed() {
+    let config = create_test_config_fast(vec![], Strategy::RoundRobin);
+    let ctx = Arc::new(Context::new(config).expect("Failed to create context"));
+
+    let config_service: Arc<dyn ConfigService> = Arc::new(MockConfigService);
     let health_service: Arc<dyn HealthService> = Arc::new(MockHealthService);
     let metrics_service: Arc<dyn MetricsService> = Arc::new(MockMetricsService);
     let proxy_service: Arc<dyn ProxyService> = Arc::new(MockProxyService);
 
-    let _app = App::new(
+    let app = App::new(
         config_service.clone(),
         health_service,
         metrics_service,
-        proxy_service,
+        proxy_service.clone(),
     )
     .await;
 
-    let config_snapshot = config_service.snapshot();
-    let ctx_result = Context::new(&config_snapshot);
+    // Spawn app.run() in background since it waits for shutdown
+    let ctx_clone = ctx.clone();
+    let app_handle = tokio::spawn(async move {
+        let _ = app.run(ctx_clone).await;
+    });
 
-    assert!(ctx_result.is_ok());
+    // Wait a bit for services to start
+    tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+
+    // Verify app is running (not finished)
+    assert!(!app_handle.is_finished());
+
+    // Send shutdown signal
+    let _ = ctx.channels().shutdown_tx().send(());
+
+    // Wait a bit for shutdown
+    tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
+    // Cleanup
+    app_handle.abort();
 }

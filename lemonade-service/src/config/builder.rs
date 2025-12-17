@@ -5,7 +5,7 @@ use super::{Config, ConfigError, WorkerAddress};
 use std::{path::PathBuf, time::Duration};
 
 use constants::*;
-use dotenv::dotenv;
+use dotenvy::dotenv;
 
 /// Config builder
 #[derive(Default)]
