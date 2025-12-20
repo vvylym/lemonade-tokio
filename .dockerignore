@@ -7,6 +7,7 @@
 target/
 Cargo.lock
 **/*.rs.bk
+.cargo/
 
 # IDE
 .idea/
