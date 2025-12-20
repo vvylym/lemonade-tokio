@@ -68,7 +68,7 @@ jobs:
       - name: Generate coverage
         run: cargo llvm-cov --workspace --all-targets --all-features --lcov --output-path .github/lcov.info
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           files: .github/lcov.info
           flags: unittests
