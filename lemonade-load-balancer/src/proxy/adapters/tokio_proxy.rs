@@ -53,7 +53,7 @@ impl TokioProxyService {
         ctx: Arc<Context>,
     ) -> Result<(), ProxyError> {
         let backend_id = backend.id();
-        let backend_addr = backend.address();
+        let backend_addr = backend.address().as_str();
 
         // Increment connection counter
         backend.increment_connection();
@@ -66,7 +66,7 @@ impl TokioProxyService {
 
         let connection_start = Instant::now();
 
-        // Connect to backend
+        // Connect to backend (ToSocketAddrs will resolve hostname lazily)
         let backend_stream = match TcpStream::connect(backend_addr).await {
             Ok(stream) => stream,
             Err(e) => {
@@ -87,12 +87,13 @@ impl TokioProxyService {
                 let _ = ctx.channels().backend_failure_tx().try_send(failure_event);
 
                 // Send metrics event
+                let duration_micros = connection_start.elapsed().as_micros() as u64;
                 let _ =
                     ctx.channels()
                         .metrics_tx()
                         .try_send(MetricsEvent::RequestFailed {
                             backend_id,
-                            latency_micros: connection_start.elapsed().as_micros() as u64,
+                            latency_micros: duration_micros,
                             error_class: MetricsErrorClass::ConnectionRefused,
                         });
 

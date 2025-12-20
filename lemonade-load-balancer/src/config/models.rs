@@ -34,6 +34,12 @@ pub struct Config {
     pub health: HealthConfig,
     /// Metrics config
     pub metrics: MetricsConfig,
+    /// OTLP exporter endpoint (optional)
+    #[serde(default)]
+    pub otlp_endpoint: Option<String>,
+    /// OTLP exporter protocol (optional)
+    #[serde(default)]
+    pub otlp_protocol: Option<String>,
 }
 
 /// Events emitted when configuration changes occur

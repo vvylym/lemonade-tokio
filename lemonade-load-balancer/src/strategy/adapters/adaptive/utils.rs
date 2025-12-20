@@ -317,7 +317,7 @@ mod tests {
         BackendConfig {
             id,
             name: Some(format!("backend-{}", id)),
-            address,
+            address: address.into(),
             weight,
         }
     }
@@ -733,7 +733,7 @@ mod tests {
         let backends_meta: Vec<BackendMeta> = routing
             .all_backends()
             .iter()
-            .map(|b| BackendMeta::new(b.id(), b.name(), b.address(), b.weight()))
+            .map(|b| BackendMeta::new(b.id(), b.name(), b.address().clone(), b.weight()))
             .collect();
         let scoring_context = ScoringContext {
             max_connections: 10,
@@ -770,7 +770,7 @@ mod tests {
         let backends_meta: Vec<BackendMeta> = routing
             .all_backends()
             .iter()
-            .map(|b| BackendMeta::new(b.id(), b.name(), b.address(), b.weight()))
+            .map(|b| BackendMeta::new(b.id(), b.name(), b.address().clone(), b.weight()))
             .collect();
         let scoring_context = ScoringContext {
             max_connections: 10,

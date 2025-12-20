@@ -30,10 +30,16 @@ impl ConfigBuilder {
             .parse::<u64>()
             .map_err(|e| ConfigError::Parse(format!("Invalid WORK_DELAY_MS: {}", e)))?;
 
+        let otlp_endpoint = std::env::var(WORKER_OTLP_ENDPOINT_ENV_KEY).ok();
+
+        let otlp_protocol = std::env::var(WORKER_OTLP_PROTOCOL_ENV_KEY).ok();
+
         Ok(Config {
             listen_address,
             service_name,
             work_delay: Duration::from_millis(work_delay_ms),
+            otlp_endpoint,
+            otlp_protocol,
         })
     }
 
@@ -84,6 +90,10 @@ mod constants {
     pub const WORKER_SERVICE_NAME_ENV_KEY: &str = "LEMONADE_WORKER_SERVICE_NAME";
 
     pub const WORKER_WORK_DELAY_ENV_KEY: &str = "LEMONADE_WORKER_WORK_DELAY_MS";
+
+    pub const WORKER_OTLP_ENDPOINT_ENV_KEY: &str = "LEMONADE_OTLP_ENDPOINT";
+
+    pub const WORKER_OTLP_PROTOCOL_ENV_KEY: &str = "LEMONADE_OTLP_PROTOCOL";
 
     pub const WORKER_LISTEN_ADDRESS_DEFAULT: &str = "127.0.0.1:50200";
 

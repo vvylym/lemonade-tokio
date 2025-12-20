@@ -316,7 +316,7 @@ fn route_table_insert_should_succeed() {
     let config = BackendConfig {
         id: 5,
         name: Some("new-backend".to_string()),
-        address: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 9090),
+        address: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 9090).into(),
         weight: Some(20),
     };
     let backend = Arc::new(Backend::new(config));

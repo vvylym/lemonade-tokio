@@ -1,0 +1,225 @@
+{
+    "title": "Lemonade - Load Balancer",
+    "tags": [
+        "lemonade",
+        "load-balancer"
+    ],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "10s",
+    "panels": [
+        {
+            "id": 1,
+            "gridPos": {
+                "x": 0,
+                "y": 0,
+                "w": 6,
+                "h": 4
+            },
+            "type": "stat",
+            "title": "Total Requests",
+            "targets": [
+                {
+                    "expr": "sum(increase(lemonade_http_requests_total{otel_scope_name=\"lemonade-load-balancer\"}[1h]))",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "unit": "short",
+                    "decimals": 0
+                }
+            }
+        },
+        {
+            "id": 2,
+            "gridPos": {
+                "x": 6,
+                "y": 0,
+                "w": 9,
+                "h": 4
+            },
+            "type": "timeseries",
+            "title": "Requests per Endpoint",
+            "targets": [
+                {
+                    "expr": "sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-load-balancer\"}[1m])) by (http_route)",
+                    "legendFormat": "{{http_route}}",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "unit": "reqps",
+                    "decimals": 2
+                }
+            }
+        },
+        {
+            "id": 3,
+            "gridPos": {
+                "x": 15,
+                "y": 0,
+                "w": 9,
+                "h": 4
+            },
+            "type": "timeseries",
+            "title": "Average Response Time per Endpoint (ms)",
+            "targets": [
+                {
+                    "expr": "avg(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-load-balancer\"}[1m])) / avg(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-load-balancer\"}[1m])) * 1000000",
+                    "legendFormat": "average",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "unit": "\u00b5s",
+                    "decimals": 2
+                }
+            }
+        },
+        {
+            "id": 4,
+            "gridPos": {
+                "x": 0,
+                "y": 4,
+                "w": 12,
+                "h": 8
+            },
+            "type": "timeseries",
+            "title": "Latency Percentiles (p50/p95/p99) - ms",
+            "targets": [
+                {
+                    "expr": "histogram_quantile(0.5, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-load-balancer\"}[5m])) by (le)) * 1000",
+                    "legendFormat": "p50",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                },
+                {
+                    "expr": "histogram_quantile(0.95, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-load-balancer\"}[5m])) by (le)) * 1000",
+                    "legendFormat": "p95",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                },
+                {
+                    "expr": "histogram_quantile(0.99, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-load-balancer\"}[5m])) by (le)) * 1000",
+                    "legendFormat": "p99",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "unit": "ms",
+                    "decimals": 2
+                }
+            }
+        },
+        {
+            "id": 5,
+            "gridPos": {
+                "x": 12,
+                "y": 4,
+                "w": 6,
+                "h": 8
+            },
+            "type": "timeseries",
+            "title": "Error Rate",
+            "targets": [
+                {
+                    "expr": "sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-load-balancer\", http_status_code!~\"2..\"}[5m])) / sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-load-balancer\"}[5m]))",
+                    "legendFormat": "error_rate",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "unit": "percentunit",
+                    "decimals": 4,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "value": null,
+                                "color": "green"
+                            },
+                            {
+                                "value": 0.01,
+                                "color": "yellow"
+                            },
+                            {
+                                "value": 0.05,
+                                "color": "red"
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        {
+            "id": 6,
+            "gridPos": {
+                "x": 18,
+                "y": 4,
+                "w": 6,
+                "h": 8
+            },
+            "type": "timeseries",
+            "title": "Total Requests by Status Code",
+            "targets": [
+                {
+                    "expr": "sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-load-balancer\"}[1m])) by (http_status_code)",
+                    "legendFormat": "{{http_status_code}}",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "unit": "reqps",
+                    "decimals": 2
+                }
+            }
+        }
+    ]
+}

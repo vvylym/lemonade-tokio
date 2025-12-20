@@ -1,0 +1,242 @@
+{
+    "title": "Lemonade - Worker Rocket",
+    "tags": [
+        "lemonade",
+        "worker",
+        "rocket"
+    ],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "10s",
+    "panels": [
+        {
+            "id": 1,
+            "gridPos": {
+                "x": 0,
+                "y": 0,
+                "w": 6,
+                "h": 4
+            },
+            "type": "stat",
+            "title": "Total Requests",
+            "targets": [
+                {
+                    "expr": "sum(increase(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-rocket\"}[1h]))",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "unit": "short",
+                    "decimals": 0
+                }
+            }
+        },
+        {
+            "id": 2,
+            "gridPos": {
+                "x": 6,
+                "y": 0,
+                "w": 9,
+                "h": 4
+            },
+            "type": "timeseries",
+            "title": "Requests per Endpoint",
+            "targets": [
+                {
+                    "expr": "sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-rocket\", http_route=\"/health\"}[1m])) by (http_route)",
+                    "legendFormat": "{{http_route}}",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                },
+                {
+                    "expr": "sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-rocket\", http_route=\"/work\"}[1m])) by (http_route)",
+                    "legendFormat": "{{http_route}}",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "unit": "reqps",
+                    "decimals": 2
+                }
+            }
+        },
+        {
+            "id": 3,
+            "gridPos": {
+                "x": 15,
+                "y": 0,
+                "w": 9,
+                "h": 4
+            },
+            "type": "timeseries",
+            "title": "Average Response Time per Endpoint (ms)",
+            "targets": [
+                {
+                    "expr": "avg(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-worker-rocket\", http_route=\"/health\"}[1m])) / avg(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-worker-rocket\", http_route=\"/health\"}[1m])) * 1000000",
+                    "legendFormat": "/health",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                },
+                {
+                    "expr": "avg(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-worker-rocket\", http_route=\"/work\"}[1m])) / avg(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-worker-rocket\", http_route=\"/work\"}[1m])) * 1000000",
+                    "legendFormat": "/work",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "unit": "\u00b5s",
+                    "decimals": 2
+                }
+            }
+        },
+        {
+            "id": 4,
+            "gridPos": {
+                "x": 0,
+                "y": 4,
+                "w": 12,
+                "h": 8
+            },
+            "type": "timeseries",
+            "title": "Latency Percentiles (p50/p95/p99) - ms",
+            "targets": [
+                {
+                    "expr": "histogram_quantile(0.5, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-worker-rocket\"}[5m])) by (le, http_route)) * 1000",
+                    "legendFormat": "p50 - {{http_route}}",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                },
+                {
+                    "expr": "histogram_quantile(0.95, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-worker-rocket\"}[5m])) by (le, http_route)) * 1000",
+                    "legendFormat": "p95 - {{http_route}}",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                },
+                {
+                    "expr": "histogram_quantile(0.99, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-worker-rocket\"}[5m])) by (le, http_route)) * 1000",
+                    "legendFormat": "p99 - {{http_route}}",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "unit": "ms",
+                    "decimals": 2
+                }
+            }
+        },
+        {
+            "id": 5,
+            "gridPos": {
+                "x": 12,
+                "y": 4,
+                "w": 6,
+                "h": 8
+            },
+            "type": "timeseries",
+            "title": "Error Rate",
+            "targets": [
+                {
+                    "expr": "sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-rocket\", http_status_code!~\"2..\"}[5m])) / sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-rocket\"}[5m]))",
+                    "legendFormat": "error_rate",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "unit": "percentunit",
+                    "decimals": 4,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "value": null,
+                                "color": "green"
+                            },
+                            {
+                                "value": 0.01,
+                                "color": "yellow"
+                            },
+                            {
+                                "value": 0.05,
+                                "color": "red"
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        {
+            "id": 6,
+            "gridPos": {
+                "x": 18,
+                "y": 4,
+                "w": 6,
+                "h": 8
+            },
+            "type": "timeseries",
+            "title": "Total Requests by Status Code",
+            "targets": [
+                {
+                    "expr": "sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-rocket\"}[1m])) by (http_status_code)",
+                    "legendFormat": "{{http_status_code}}",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "unit": "reqps",
+                    "decimals": 2
+                }
+            }
+        }
+    ]
+}

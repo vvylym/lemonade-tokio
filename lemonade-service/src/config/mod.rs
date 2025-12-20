@@ -22,6 +22,12 @@ pub struct Config {
     /// Work delay
     #[serde(with = "serde_helpers")]
     work_delay: Duration,
+    /// OTLP exporter endpoint (optional)
+    #[serde(default)]
+    otlp_endpoint: Option<String>,
+    /// OTLP exporter protocol (optional)
+    #[serde(default)]
+    otlp_protocol: Option<String>,
 }
 
 impl Config {
@@ -35,6 +41,8 @@ impl Config {
             listen_address: listen_address.into(),
             service_name: service_name.into(),
             work_delay: work_delay.into(),
+            otlp_endpoint: None,
+            otlp_protocol: None,
         }
     }
     /// Get the listen address
@@ -50,5 +58,15 @@ impl Config {
     /// Get the work delay
     pub fn work_delay(&self) -> Duration {
         self.work_delay
+    }
+
+    /// Get the OTLP endpoint (if configured)
+    pub fn otlp_endpoint(&self) -> Option<&str> {
+        self.otlp_endpoint.as_deref()
+    }
+
+    /// Get the OTLP protocol (if configured)
+    pub fn otlp_protocol(&self) -> Option<&str> {
+        self.otlp_protocol.as_deref()
     }
 }

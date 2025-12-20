@@ -43,7 +43,7 @@ impl StrategyService for FastestResponseTimeStrategy {
         Ok(BackendMeta::new(
             backend.id(),
             backend.name(),
-            backend.address(),
+            backend.address().clone(),
             backend.weight(),
         ))
     }
@@ -97,6 +97,8 @@ mod tests {
                 interval: Duration::from_secs(10),
                 timeout: Duration::from_secs(2),
             },
+            otlp_protocol: None,
+            otlp_endpoint: None,
         }
     }
 

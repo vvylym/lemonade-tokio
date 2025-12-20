@@ -30,7 +30,7 @@ impl StrategyService for LeastConnectionsStrategy {
         Ok(BackendMeta::new(
             backend.id(),
             backend.name(),
-            backend.address(),
+            backend.address().clone(),
             backend.weight(),
         ))
     }

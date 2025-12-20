@@ -6,6 +6,7 @@ use lemonade_service::{
     error_response::ErrorResponse,
     worker::{HealthResponse, HealthService, WorkResponse, WorkService},
 };
+use std::time::Instant;
 use tracing::instrument;
 
 type HealthHandlerResult =
@@ -13,37 +14,43 @@ type HealthHandlerResult =
 type WorkHandlerResult = Result<Json<WorkResponse>, (StatusCode, Json<ErrorResponse>)>;
 
 /// Health check handler
-#[instrument(skip(state), fields(http.method = "GET", http.route = "/health"))]
+#[instrument(skip(state), fields(framework.name = "axum", http.route = "/health"))]
 pub async fn health_handler(State(state): State<AppState>) -> HealthHandlerResult {
-    match state.worker_service.health_check().await {
-        Ok(response) => {
-            tracing::Span::current().record("http.status_code", 200);
-            Ok(Json(response))
-        }
-        Err(e) => {
-            tracing::Span::current().record("http.status_code", 500);
-            Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new(format!("{}", e))),
-            ))
-        }
-    }
+    let start = Instant::now();
+    let metrics = lemonade_observability::get_http_metrics("lemonade-worker-axum");
+
+    let result = match state.worker_service.health_check().await {
+        Ok(response) => Ok(Json(response)),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::new(format!("{}", e))),
+        )),
+    };
+
+    let status = result.as_ref().map(|_| 200).unwrap_or(500);
+    let duration_micros = start.elapsed().as_micros() as u64;
+    metrics.record_request("GET", "/health", status, duration_micros);
+
+    result
 }
 
 /// Work handler
-#[instrument(skip(state), fields(http.method = "GET", http.route = "/work"))]
+#[instrument(skip(state), fields(framework.name = "axum", http.route = "/work"))]
 pub async fn work_handler(State(state): State<AppState>) -> WorkHandlerResult {
-    match state.worker_service.work().await {
-        Ok(response) => {
-            tracing::Span::current().record("http.status_code", 200);
-            Ok(Json(response))
-        }
-        Err(e) => {
-            tracing::Span::current().record("http.status_code", 500);
-            Err((
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(ErrorResponse::new(format!("{}", e))),
-            ))
-        }
-    }
+    let start = Instant::now();
+    let metrics = lemonade_observability::get_http_metrics("lemonade-worker-axum");
+
+    let result = match state.worker_service.work().await {
+        Ok(response) => Ok(Json(response)),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(ErrorResponse::new(format!("{}", e))),
+        )),
+    };
+
+    let status = result.as_ref().map(|_| 200).unwrap_or(500);
+    let duration_micros = start.elapsed().as_micros() as u64;
+    metrics.record_request("GET", "/work", status, duration_micros);
+
+    result
 }

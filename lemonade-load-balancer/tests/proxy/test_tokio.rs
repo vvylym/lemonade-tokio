@@ -50,11 +50,11 @@ async fn tokio_proxy_service_accept_connections_binds_listener_should_succeed() 
 async fn tokio_proxy_service_proxies_connection_should_succeed() {
     // Given: a service, context, client, and backend server
     let backend = create_test_backend(0, None, Some(10u8));
-    let backend_addr = *backend.address().as_ref();
+    let backend_addr_str = backend.address().as_str().to_string();
 
     // Create backend server that echoes data
     let server_handle = tokio::spawn(async move {
-        let listener = tokio::net::TcpListener::bind(backend_addr)
+        let listener = tokio::net::TcpListener::bind(&backend_addr_str)
             .await
             .expect("Failed to bind server");
         if let Ok((mut stream, _)) = listener.accept().await {
@@ -73,7 +73,8 @@ async fn tokio_proxy_service_proxies_connection_should_succeed() {
     };
     let service = TokioProxyService::new(Arc::new(ArcSwap::from_pointee(proxy_config)))
         .expect("Failed to create service");
-    let ctx = create_test_context(vec![backend]);
+    let backend_for_ctx = create_test_backend(0, None, Some(10u8));
+    let ctx = create_test_context(vec![backend_for_ctx]);
     // Backends start healthy by default
 
     // Start proxy service

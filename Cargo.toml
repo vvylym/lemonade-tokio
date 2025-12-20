@@ -9,7 +9,7 @@ members = [
     "lemonade-worker-hyper", 
     "lemonade-worker-rocket"
 ]
-resolver = "2"
+resolver = "3"
 
 [workspace.dependencies]
 # Serialization and deserialization

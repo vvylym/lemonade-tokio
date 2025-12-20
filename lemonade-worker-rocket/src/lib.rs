@@ -1,7 +1,9 @@
 //! Lemonade worker Rocket
 //!
+mod fairing;
 mod handler;
 
+use fairing::TracingFairing;
 use handler::{health_handler, work_handler};
 use lemonade_service::{AppState, config::Config};
 
@@ -9,8 +11,20 @@ use lemonade_service::{AppState, config::Config};
 pub async fn run(config: Config) -> Result<(), Box<dyn std::error::Error>> {
     // Initialize tracing with service name from config and worker package version
     lemonade_observability::init_tracing(
-        config.service_name(),
+        "lemonade-worker-rocket",
         env!("CARGO_PKG_VERSION"),
+        config.service_name(),
+        config.otlp_endpoint(),
+        config.otlp_protocol(),
+    )?;
+
+    // Initialize metrics
+    lemonade_observability::init_metrics(
+        "lemonade-worker-rocket",
+        env!("CARGO_PKG_VERSION"),
+        config.service_name(),
+        config.otlp_endpoint(),
+        config.otlp_protocol(),
     )?;
 
     let state = AppState::new(config);
@@ -22,6 +36,7 @@ pub async fn run(config: Config) -> Result<(), Box<dyn std::error::Error>> {
     };
 
     let _rocket = rocket::custom(&rocket_config)
+        .attach(TracingFairing)
         .manage(state)
         .mount("/", rocket::routes![health_handler, work_handler])
         .launch()

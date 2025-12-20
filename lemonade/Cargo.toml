@@ -14,17 +14,27 @@ publish.workspace = true
 name = "lemonade"
 path = "src/main.rs"
 
+[[bench]]
+name = "lemonade_benchmark"
+path = "benches/lemonade_benchmark.rs"
+harness = false
+
 [dependencies]
-clap = { workspace = true }
-lemonade-service = { workspace = true }
 lemonade-load-balancer = { path = "../lemonade-load-balancer" }
-lemonade-observability = { path = "../lemonade-observability" }
 lemonade-worker-actix = { path = "../lemonade-worker-actix" }
 lemonade-worker-axum = { path = "../lemonade-worker-axum" }
 lemonade-worker-hyper = { path = "../lemonade-worker-hyper" }
 lemonade-worker-rocket = { path = "../lemonade-worker-rocket" }
+
+clap = { workspace = true }
+lemonade-service = { workspace = true }
+lemonade-observability = { workspace = true }
 tracing = { workspace = true }
 tokio = { workspace = true }
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+criterion = { version = "0.8", features = ["html_reports"] }
+reqwest = { version = "0.12", features = ["json"] }

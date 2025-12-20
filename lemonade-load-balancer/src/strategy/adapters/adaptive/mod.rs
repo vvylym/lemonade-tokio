@@ -97,7 +97,7 @@ impl StrategyService for AdaptiveStrategy {
             return Ok(BackendMeta::new(
                 backend.id(),
                 backend.name(),
-                backend.address(),
+                backend.address().clone(),
                 backend.weight(),
             ));
         }
@@ -118,7 +118,7 @@ impl StrategyService for AdaptiveStrategy {
         // Convert to BackendMeta for scoring (temporary compatibility)
         let backend_metas: Vec<BackendMeta> = healthy_backends
             .iter()
-            .map(|b| BackendMeta::new(b.id(), b.name(), b.address(), b.weight()))
+            .map(|b| BackendMeta::new(b.id(), b.name(), b.address().clone(), b.weight()))
             .collect();
 
         // Check cache for all backends in parallel
@@ -204,6 +204,8 @@ mod tests {
                 interval: Duration::from_secs(10),
                 timeout: Duration::from_secs(2),
             },
+            otlp_protocol: None,
+            otlp_endpoint: None,
         }
     }
 

@@ -3,7 +3,7 @@
 use lemonade_load_balancer::prelude::*;
 use proptest::prelude::*;
 use rstest::*;
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs};
 
 #[rstest]
 #[case("127.0.0.1:8080", IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080)]
@@ -16,8 +16,10 @@ fn test_parse_ipv4(
     let result = BackendAddress::parse(addr_str);
     assert!(result.is_ok());
     let addr = result.expect("Failed to parse address");
-    assert_eq!(addr.as_ref().ip(), expected_ip);
-    assert_eq!(addr.as_ref().port(), expected_port);
+    // Resolve to SocketAddr to check IP and port
+    let socket_addrs: Vec<SocketAddr> = addr.to_socket_addrs().unwrap().collect();
+    assert_eq!(socket_addrs[0].ip(), expected_ip);
+    assert_eq!(socket_addrs[0].port(), expected_port);
 }
 
 #[test]
@@ -26,11 +28,13 @@ fn test_parse_ipv6() {
     let result = BackendAddress::parse(addr_str);
     assert!(result.is_ok());
     let addr = result.expect("Failed to parse address");
+    // Resolve to SocketAddr to check IP and port
+    let socket_addrs: Vec<SocketAddr> = addr.to_socket_addrs().unwrap().collect();
     assert_eq!(
-        addr.as_ref().ip(),
+        socket_addrs[0].ip(),
         IpAddr::V6(Ipv6Addr::new(0, 0, 0, 0, 0, 0, 0, 1))
     );
-    assert_eq!(addr.as_ref().port(), 8080);
+    assert_eq!(socket_addrs[0].port(), 8080);
 }
 
 #[rstest]
@@ -42,31 +46,18 @@ fn test_parse_invalid_format(#[case] addr_str: &str, #[case] _description: &str)
 }
 
 #[test]
-fn test_parse_unresolvable_hostname() {
-    let addr_str = "invalid-hostname-that-does-not-exist.example:8080";
-    let result = BackendAddress::parse(addr_str);
-    assert!(result.is_err());
-    match result.expect_err("Failed to parse address") {
-        BackendAddressError::ResolutionFailed(_) => {}
-        _ => panic!("Expected ResolutionFailed error"),
-    }
-}
-
-#[test]
 fn test_from_socket_addr() {
     let socket_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1)), 9090);
     let backend_addr = BackendAddress::from(socket_addr);
-    assert_eq!(backend_addr.as_ref(), &socket_addr);
+    assert_eq!(backend_addr.as_str(), "192.168.1.1:9090");
 }
 
 #[test]
-fn test_as_ref_socket_addr() {
+fn test_as_ref_str() {
     let socket_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(10, 0, 0, 1)), 3000);
     let backend_addr = BackendAddress::from(socket_addr);
-    let socket_ref = backend_addr.as_ref();
-    assert_eq!(socket_ref, &socket_addr);
-    assert_eq!(socket_ref.ip(), IpAddr::V4(Ipv4Addr::new(10, 0, 0, 1)));
-    assert_eq!(socket_ref.port(), 3000);
+    let str_ref = backend_addr.as_ref();
+    assert_eq!(str_ref, "10.0.0.1:3000");
 }
 
 #[rstest]
@@ -120,7 +111,8 @@ proptest! {
     #[test]
     fn backend_address_roundtrip(socket_addr in socket_addr_strategy()) {
         let backend_addr = BackendAddress::from(socket_addr);
-        prop_assert_eq!(backend_addr.as_ref(), &socket_addr);
+        // BackendAddress stores as string, so compare string representations
+        prop_assert_eq!(backend_addr.as_str(), socket_addr.to_string());
     }
 
     #[test]
@@ -190,7 +182,9 @@ fn test_from_str_with_hostname() {
     let result = BackendAddress::parse("localhost:8080");
     assert!(result.is_ok());
     let addr = result.expect("Failed to parse localhost");
-    assert_eq!(addr.as_ref().port(), 8080);
+    // Resolve to SocketAddr to check port
+    let socket_addrs: Vec<SocketAddr> = addr.to_socket_addrs().unwrap().collect();
+    assert_eq!(socket_addrs[0].port(), 8080);
 }
 
 #[test]

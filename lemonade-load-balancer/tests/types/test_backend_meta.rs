@@ -41,7 +41,11 @@ fn test_new_with_optional_fields(
 #[rstest]
 fn test_getters(#[from(create_test_backend)] backend: BackendMeta) {
     assert!(*backend.id() < 255);
-    assert!(backend.address().as_ref().port() >= 8080);
+    // Address should contain port >= 8080
+    assert!(
+        backend.address().as_str().contains(":808")
+            || backend.address().as_str().contains(":809")
+    );
 }
 
 #[rstest]
@@ -49,7 +53,8 @@ fn test_getters(#[from(create_test_backend)] backend: BackendMeta) {
 #[case(None, None)]
 fn test_name_getter(#[case] input_name: Option<&str>, #[case] expected: Option<&String>) {
     let address = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
-    let meta = BackendMeta::new(1u8, input_name, address, Some(10u8));
+    let meta =
+        BackendMeta::new(1u8, input_name, BackendAddress::from(address), Some(10u8));
     assert_eq!(meta.name(), expected);
 }
 
@@ -65,13 +70,10 @@ fn test_weight_getter(#[case] input_weight: Option<u8>, #[case] expected: Option
 #[test]
 fn test_address_getter() {
     let address = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1)), 9090);
-    let meta = BackendMeta::new(1u8, Some("test"), address, Some(10u8));
+    let meta =
+        BackendMeta::new(1u8, Some("test"), BackendAddress::from(address), Some(10u8));
     let addr = meta.address();
-    assert_eq!(
-        addr.as_ref().ip(),
-        IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1))
-    );
-    assert_eq!(addr.as_ref().port(), 9090);
+    assert_eq!(addr.as_str(), "192.168.1.1:9090");
 }
 
 #[test]
@@ -90,7 +92,7 @@ fn test_new_with_backend_address() {
     let socket_addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
     let backend_addr = BackendAddress::from(socket_addr);
     let meta = BackendMeta::new(1u8, Some("backend-1"), backend_addr, Some(10u8));
-    assert_eq!(meta.address().as_ref().port(), 8080);
+    assert_eq!(meta.address().as_str(), "127.0.0.1:8080");
 }
 
 #[rstest]
