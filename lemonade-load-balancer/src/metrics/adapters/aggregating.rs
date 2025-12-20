@@ -78,18 +78,26 @@ impl MetricsService for AggregatingMetricsService {
                                 // Record as a request (connection duration as latency)
                                 let latency_ms = duration_micros / 1000;
                                 backend.record_request(latency_ms, false);
+
+                                // Export to OpenTelemetry (each connection = one request from client perspective)
+                                let metrics = lemonade_observability::get_http_metrics("lemonade-load-balancer");
+                                metrics.record_request("PROXY", "/", 200, duration_micros);
                             }
                         }
                         Some(MetricsEvent::RequestCompleted {
                             backend_id,
                             latency_micros,
-                            ..
+                            status_code,
                         }) => {
                             // Record successful request
                             let routing = ctx.routing_table();
                             if let Some(backend) = routing.get(backend_id) {
                                 let latency_ms = latency_micros / 1000;
                                 backend.record_request(latency_ms, false);
+
+                                // Export to OpenTelemetry
+                                let metrics = lemonade_observability::get_http_metrics("lemonade-load-balancer");
+                                metrics.record_request("PROXY", "/", status_code, latency_micros);
                             }
                         }
                         Some(MetricsEvent::RequestFailed {
@@ -102,6 +110,10 @@ impl MetricsService for AggregatingMetricsService {
                             if let Some(backend) = routing.get(backend_id) {
                                 let latency_ms = latency_micros / 1000;
                                 backend.record_request(latency_ms, true);
+
+                                // Export to OpenTelemetry (failed request)
+                                let metrics = lemonade_observability::get_http_metrics("lemonade-load-balancer");
+                                metrics.record_request("PROXY", "/", 500, latency_micros);
                             }
                         }
                         Some(MetricsEvent::FlushSnapshot) | None => {

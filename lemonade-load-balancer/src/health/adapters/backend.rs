@@ -57,10 +57,62 @@ impl HealthService for BackendHealthService {
 
         // Get initial config
         let initial_config = self.config.load();
-        let mut interval = tokio::time::interval(initial_config.interval);
+        // Use interval_at to fire immediately, then at regular intervals
+        let mut interval = tokio::time::interval_at(
+            tokio::time::Instant::now(),
+            initial_config.interval,
+        );
 
         let backend_count = ctx.routing_table().len();
-        tracing::debug!("Health service will monitor {} backends", backend_count);
+        tracing::info!("Health service will monitor {} backends", backend_count);
+        
+        // Perform immediate health check on startup
+        tracing::info!("Performing initial health check on all backends");
+        let routing = ctx.routing_table();
+        let health_tx_clone = health_tx.clone();
+        let timeout = initial_config.timeout;
+        for backend in routing.all_backends() {
+            let backend_id = backend.id();
+            let address = backend.address().clone();
+            
+            let check_start = std::time::Instant::now();
+            let is_healthy = match tokio::time::timeout(
+                timeout,
+                tokio::net::TcpStream::connect(address.as_str()),
+            )
+            .await
+            {
+                Ok(Ok(_)) => {
+                    let rtt_micros = check_start.elapsed().as_micros() as u64;
+                    tracing::info!("Backend {} initial health check: healthy (RTT: {}μs)", backend_id, rtt_micros);
+                    let _ = health_tx_clone.send(HealthEvent::BackendHealthy {
+                        backend_id,
+                        rtt_micros,
+                    }).await;
+                    true
+                }
+                Ok(Err(_)) => {
+                    tracing::warn!("Backend {} initial health check: connection refused", backend_id);
+                    let _ = health_tx_clone.send(HealthEvent::BackendUnhealthy {
+                        backend_id,
+                        reason: HealthFailureReason::ConnectionRefused,
+                    }).await;
+                    false
+                }
+                Err(_) => {
+                    tracing::warn!("Backend {} initial health check: timeout", backend_id);
+                    let _ = health_tx_clone.send(HealthEvent::BackendUnhealthy {
+                        backend_id,
+                        reason: HealthFailureReason::Timeout,
+                    }).await;
+                    false
+                }
+            };
+            
+            let now_ms = Self::now_ms();
+            backend.set_health(is_healthy, now_ms);
+        }
+        tracing::info!("Initial health check completed");
 
         loop {
             tokio::select! {
@@ -144,11 +196,11 @@ impl HealthService for BackendHealthService {
                         );
                         let _check_guard = check_span.enter();
 
-                        // Perform TCP health check
+                        // Perform TCP health check (ToSocketAddrs will resolve hostname lazily)
                         let check_start = std::time::Instant::now();
                         let is_healthy = match tokio::time::timeout(
                             config.timeout,
-                            tokio::net::TcpStream::connect(address),
+                            tokio::net::TcpStream::connect(address.as_str()),
                         )
                         .await
                         {

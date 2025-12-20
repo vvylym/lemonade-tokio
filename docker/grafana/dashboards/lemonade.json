@@ -1,0 +1,1801 @@
+{
+    "title": "Lemonade - Main Dashboard",
+    "tags": [
+        "lemonade",
+        "load-balancer",
+        "worker",
+        "actix",
+        "axum",
+        "hyper",
+        "rocket"
+    ],
+    "timezone": "browser",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "10s",
+    "panels": [
+        {
+            "id": 100,
+            "gridPos": {
+                "x": 0,
+                "y": 0,
+                "w": 4,
+                "h": 4
+            },
+            "type": "stat",
+            "title": "Load Balancer - Avg Response Time",
+            "targets": [
+                {
+                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-load-balancer\"}[1m])) / sum(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-load-balancer\"}[1m])) * 1000000",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "unit": "\u00b5s",
+                    "decimals": 2
+                }
+            }
+        },
+        {
+            "id": 101,
+            "gridPos": {
+                "x": 4,
+                "y": 0,
+                "w": 4,
+                "h": 4
+            },
+            "type": "stat",
+            "title": "Actix-Web Worker - Avg Response Time",
+            "targets": [
+                {
+                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-worker-actix\"}[1m])) / sum(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-worker-actix\"}[1m])) * 1000000",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "unit": "\u00b5s",
+                    "decimals": 2
+                }
+            }
+        },
+        {
+            "id": 102,
+            "gridPos": {
+                "x": 8,
+                "y": 0,
+                "w": 4,
+                "h": 4
+            },
+            "type": "stat",
+            "title": "Axum Worker - Avg Response Time",
+            "targets": [
+                {
+                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-worker-axum\"}[1m])) / sum(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-worker-axum\"}[1m])) * 1000000",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "unit": "\u00b5s",
+                    "decimals": 2
+                }
+            }
+        },
+        {
+            "id": 103,
+            "gridPos": {
+                "x": 12,
+                "y": 0,
+                "w": 4,
+                "h": 4
+            },
+            "type": "stat",
+            "title": "Hyper Worker - Avg Response Time",
+            "targets": [
+                {
+                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-worker-hyper\"}[1m])) / sum(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-worker-hyper\"}[1m])) * 1000000",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "unit": "\u00b5s",
+                    "decimals": 2
+                }
+            }
+        },
+        {
+            "id": 104,
+            "gridPos": {
+                "x": 16,
+                "y": 0,
+                "w": 4,
+                "h": 4
+            },
+            "type": "stat",
+            "title": "Rocket Worker - Avg Response Time",
+            "targets": [
+                {
+                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-worker-rocket\"}[1m])) / sum(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-worker-rocket\"}[1m])) * 1000000",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "unit": "\u00b5s",
+                    "decimals": 2
+                }
+            }
+        },
+        {
+            "id": 105,
+            "gridPos": {
+                "x": 0,
+                "y": 4,
+                "w": 4,
+                "h": 4
+            },
+            "type": "stat",
+            "title": "Load Balancer - Total Requests",
+            "targets": [
+                {
+                    "expr": "sum(increase(lemonade_http_requests_total{otel_scope_name=\"lemonade-load-balancer\"}[$__range]))",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "unit": "short",
+                    "decimals": 0
+                }
+            }
+        },
+        {
+            "id": 106,
+            "gridPos": {
+                "x": 4,
+                "y": 4,
+                "w": 4,
+                "h": 4
+            },
+            "type": "stat",
+            "title": "Actix-Web Worker - Total Requests",
+            "targets": [
+                {
+                    "expr": "sum(increase(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-actix\"}[$__range]))",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "unit": "short",
+                    "decimals": 0
+                }
+            }
+        },
+        {
+            "id": 107,
+            "gridPos": {
+                "x": 8,
+                "y": 4,
+                "w": 4,
+                "h": 4
+            },
+            "type": "stat",
+            "title": "Axum Worker - Total Requests",
+            "targets": [
+                {
+                    "expr": "sum(increase(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-axum\"}[$__range]))",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "unit": "short",
+                    "decimals": 0
+                }
+            }
+        },
+        {
+            "id": 108,
+            "gridPos": {
+                "x": 12,
+                "y": 4,
+                "w": 4,
+                "h": 4
+            },
+            "type": "stat",
+            "title": "Hyper Worker - Total Requests",
+            "targets": [
+                {
+                    "expr": "sum(increase(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-hyper\"}[$__range]))",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "unit": "short",
+                    "decimals": 0
+                }
+            }
+        },
+        {
+            "id": 109,
+            "gridPos": {
+                "x": 16,
+                "y": 4,
+                "w": 4,
+                "h": 4
+            },
+            "type": "stat",
+            "title": "Rocket Worker - Total Requests",
+            "targets": [
+                {
+                    "expr": "sum(increase(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-rocket\"}[$__range]))",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "unit": "short",
+                    "decimals": 0
+                }
+            }
+        },
+        {
+            "id": 110,
+            "gridPos": {
+                "x": 0,
+                "y": 8,
+                "w": 4,
+                "h": 4
+            },
+            "type": "stat",
+            "title": "Load Balancer - Successful (2xx)",
+            "targets": [
+                {
+                    "expr": "sum(increase(lemonade_http_requests_total{otel_scope_name=\"lemonade-load-balancer\", http_status_code=~\"2..\"}[$__range]))",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "unit": "short",
+                    "decimals": 0,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "value": null,
+                                "color": "green"
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        {
+            "id": 111,
+            "gridPos": {
+                "x": 4,
+                "y": 8,
+                "w": 4,
+                "h": 4
+            },
+            "type": "stat",
+            "title": "Actix-Web Worker - Successful (2xx)",
+            "targets": [
+                {
+                    "expr": "sum(increase(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-actix\", http_status_code=~\"2..\"}[$__range]))",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "unit": "short",
+                    "decimals": 0,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "value": null,
+                                "color": "green"
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        {
+            "id": 112,
+            "gridPos": {
+                "x": 8,
+                "y": 8,
+                "w": 4,
+                "h": 4
+            },
+            "type": "stat",
+            "title": "Axum Worker - Successful (2xx)",
+            "targets": [
+                {
+                    "expr": "sum(increase(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-axum\", http_status_code=~\"2..\"}[$__range]))",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "unit": "short",
+                    "decimals": 0,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "value": null,
+                                "color": "green"
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        {
+            "id": 113,
+            "gridPos": {
+                "x": 12,
+                "y": 8,
+                "w": 4,
+                "h": 4
+            },
+            "type": "stat",
+            "title": "Hyper Worker - Successful (2xx)",
+            "targets": [
+                {
+                    "expr": "sum(increase(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-hyper\", http_status_code=~\"2..\"}[$__range]))",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "unit": "short",
+                    "decimals": 0,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "value": null,
+                                "color": "green"
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        {
+            "id": 114,
+            "gridPos": {
+                "x": 16,
+                "y": 8,
+                "w": 4,
+                "h": 4
+            },
+            "type": "stat",
+            "title": "Rocket Worker - Successful (2xx)",
+            "targets": [
+                {
+                    "expr": "sum(increase(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-rocket\", http_status_code=~\"2..\"}[$__range]))",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "unit": "short",
+                    "decimals": 0,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "value": null,
+                                "color": "green"
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        {
+            "id": 115,
+            "gridPos": {
+                "x": 0,
+                "y": 12,
+                "w": 4,
+                "h": 4
+            },
+            "type": "stat",
+            "title": "Load Balancer - Failed (non-2xx)",
+            "targets": [
+                {
+                    "expr": "sum(increase(lemonade_http_requests_total{otel_scope_name=\"lemonade-load-balancer\", http_status_code!~\"2..\"}[$__range]))",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "unit": "short",
+                    "decimals": 0,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "value": null,
+                                "color": "red"
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        {
+            "id": 116,
+            "gridPos": {
+                "x": 4,
+                "y": 12,
+                "w": 4,
+                "h": 4
+            },
+            "type": "stat",
+            "title": "Actix-Web Worker - Failed (non-2xx)",
+            "targets": [
+                {
+                    "expr": "sum(increase(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-actix\", http_status_code!~\"2..\"}[$__range]))",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "unit": "short",
+                    "decimals": 0,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "value": null,
+                                "color": "red"
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        {
+            "id": 117,
+            "gridPos": {
+                "x": 8,
+                "y": 12,
+                "w": 4,
+                "h": 4
+            },
+            "type": "stat",
+            "title": "Axum Worker - Failed (non-2xx)",
+            "targets": [
+                {
+                    "expr": "sum(increase(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-axum\", http_status_code!~\"2..\"}[$__range]))",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "unit": "short",
+                    "decimals": 0,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "value": null,
+                                "color": "red"
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        {
+            "id": 118,
+            "gridPos": {
+                "x": 12,
+                "y": 12,
+                "w": 4,
+                "h": 4
+            },
+            "type": "stat",
+            "title": "Hyper Worker - Failed (non-2xx)",
+            "targets": [
+                {
+                    "expr": "sum(increase(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-hyper\", http_status_code!~\"2..\"}[$__range]))",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "unit": "short",
+                    "decimals": 0,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "value": null,
+                                "color": "red"
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        {
+            "id": 119,
+            "gridPos": {
+                "x": 16,
+                "y": 12,
+                "w": 4,
+                "h": 4
+            },
+            "type": "stat",
+            "title": "Rocket Worker - Failed (non-2xx)",
+            "targets": [
+                {
+                    "expr": "sum(increase(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-rocket\", http_status_code!~\"2..\"}[$__range]))",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "unit": "short",
+                    "decimals": 0,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "value": null,
+                                "color": "red"
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        {
+            "id": 2,
+            "gridPos": {
+                "x": 0,
+                "y": 16,
+                "w": 12,
+                "h": 4
+            },
+            "type": "timeseries",
+            "title": "Load Balancer - Requests per Endpoint",
+            "targets": [
+                {
+                    "expr": "sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-load-balancer\"}[1m])) by (http_route)",
+                    "legendFormat": "{{http_route}}",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "unit": "reqps",
+                    "decimals": 2
+                }
+            }
+        },
+        {
+            "id": 3,
+            "gridPos": {
+                "x": 12,
+                "y": 16,
+                "w": 12,
+                "h": 4
+            },
+            "type": "timeseries",
+            "title": "Load Balancer - Average Response Time per Endpoint (\u00b5s)",
+            "targets": [
+                {
+                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-load-balancer\"}[1m])) / sum(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-load-balancer\"}[1m])) * 1000000",
+                    "legendFormat": "average",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "unit": "\u00b5s",
+                    "decimals": 2
+                }
+            }
+        },
+        {
+            "id": 4,
+            "gridPos": {
+                "x": 0,
+                "y": 24,
+                "w": 12,
+                "h": 8
+            },
+            "type": "timeseries",
+            "title": "Load Balancer - Latency Percentiles (p50/p95/p99) - ms",
+            "targets": [
+                {
+                    "expr": "histogram_quantile(0.5, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-load-balancer\"}[5m])) by (le)) * 1000",
+                    "legendFormat": "p50",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                },
+                {
+                    "expr": "histogram_quantile(0.95, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-load-balancer\"}[5m])) by (le)) * 1000",
+                    "legendFormat": "p95",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                },
+                {
+                    "expr": "histogram_quantile(0.99, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-load-balancer\"}[5m])) by (le)) * 1000",
+                    "legendFormat": "p99",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "unit": "ms",
+                    "decimals": 2
+                }
+            }
+        },
+        {
+            "id": 5,
+            "gridPos": {
+                "x": 12,
+                "y": 24,
+                "w": 6,
+                "h": 8
+            },
+            "type": "timeseries",
+            "title": "Load Balancer - Error Rate",
+            "targets": [
+                {
+                    "expr": "sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-load-balancer\", http_status_code!~\"2..\"}[5m])) / sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-load-balancer\"}[5m]))",
+                    "legendFormat": "error_rate",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "unit": "percentunit",
+                    "decimals": 4,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "value": null,
+                                "color": "green"
+                            },
+                            {
+                                "value": 0.01,
+                                "color": "yellow"
+                            },
+                            {
+                                "value": 0.05,
+                                "color": "red"
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        {
+            "id": 6,
+            "gridPos": {
+                "x": 18,
+                "y": 24,
+                "w": 6,
+                "h": 8
+            },
+            "type": "timeseries",
+            "title": "Load Balancer - Total Requests by Status Code",
+            "targets": [
+                {
+                    "expr": "sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-load-balancer\"}[1m])) by (http_status_code)",
+                    "legendFormat": "{{http_status_code}}",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "unit": "reqps",
+                    "decimals": 2
+                }
+            }
+        },
+        {
+            "id": 8,
+            "gridPos": {
+                "x": 0,
+                "y": 20,
+                "w": 12,
+                "h": 4
+            },
+            "type": "timeseries",
+            "title": "Actix-Web Worker - Requests per Endpoint",
+            "targets": [
+                {
+                    "expr": "sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-actix\", http_route=\"/health\"}[1m])) by (http_route)",
+                    "legendFormat": "{{http_route}}",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                },
+                {
+                    "expr": "sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-actix\", http_route=\"/work\"}[1m])) by (http_route)",
+                    "legendFormat": "{{http_route}}",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "unit": "reqps",
+                    "decimals": 2
+                }
+            }
+        },
+        {
+            "id": 9,
+            "gridPos": {
+                "x": 12,
+                "y": 20,
+                "w": 12,
+                "h": 4
+            },
+            "type": "timeseries",
+            "title": "Actix-Web Worker - Average Response Time per Endpoint (\u00b5s)",
+            "targets": [
+                {
+                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-worker-actix\", http_route=\"/health\"}[1m])) / sum(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-worker-actix\", http_route=\"/health\"}[1m])) * 1000000",
+                    "legendFormat": "/health",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                },
+                {
+                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-worker-actix\", http_route=\"/work\"}[1m])) / sum(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-worker-actix\", http_route=\"/work\"}[1m])) * 1000000",
+                    "legendFormat": "/work",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "unit": "\u00b5s",
+                    "decimals": 2
+                }
+            }
+        },
+        {
+            "id": 10,
+            "gridPos": {
+                "x": 0,
+                "y": 24,
+                "w": 12,
+                "h": 8
+            },
+            "type": "timeseries",
+            "title": "Actix-Web Worker - Latency Percentiles (p50/p95/p99) - ms",
+            "targets": [
+                {
+                    "expr": "histogram_quantile(0.5, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-worker-actix\"}[5m])) by (le, http_route)) * 1000",
+                    "legendFormat": "p50 - {{http_route}}",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                },
+                {
+                    "expr": "histogram_quantile(0.95, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-worker-actix\"}[5m])) by (le, http_route)) * 1000",
+                    "legendFormat": "p95 - {{http_route}}",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                },
+                {
+                    "expr": "histogram_quantile(0.99, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-worker-actix\"}[5m])) by (le, http_route)) * 1000",
+                    "legendFormat": "p99 - {{http_route}}",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "unit": "ms",
+                    "decimals": 2
+                }
+            }
+        },
+        {
+            "id": 11,
+            "gridPos": {
+                "x": 12,
+                "y": 24,
+                "w": 6,
+                "h": 8
+            },
+            "type": "timeseries",
+            "title": "Actix-Web Worker - Error Rate",
+            "targets": [
+                {
+                    "expr": "sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-actix\", http_status_code!~\"2..\"}[5m])) / sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-actix\"}[5m]))",
+                    "legendFormat": "error_rate",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "unit": "percentunit",
+                    "decimals": 4,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "value": null,
+                                "color": "green"
+                            },
+                            {
+                                "value": 0.01,
+                                "color": "yellow"
+                            },
+                            {
+                                "value": 0.05,
+                                "color": "red"
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        {
+            "id": 12,
+            "gridPos": {
+                "x": 18,
+                "y": 24,
+                "w": 6,
+                "h": 8
+            },
+            "type": "timeseries",
+            "title": "Actix-Web Worker - Total Requests by Status Code",
+            "targets": [
+                {
+                    "expr": "sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-actix\"}[1m])) by (http_status_code)",
+                    "legendFormat": "{{http_status_code}}",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "unit": "reqps",
+                    "decimals": 2
+                }
+            }
+        },
+        {
+            "id": 14,
+            "gridPos": {
+                "x": 0,
+                "y": 24,
+                "w": 12,
+                "h": 4
+            },
+            "type": "timeseries",
+            "title": "Axum Worker - Requests per Endpoint",
+            "targets": [
+                {
+                    "expr": "sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-axum\", http_route=\"/health\"}[1m])) by (http_route)",
+                    "legendFormat": "{{http_route}}",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                },
+                {
+                    "expr": "sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-axum\", http_route=\"/work\"}[1m])) by (http_route)",
+                    "legendFormat": "{{http_route}}",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "unit": "reqps",
+                    "decimals": 2
+                }
+            }
+        },
+        {
+            "id": 15,
+            "gridPos": {
+                "x": 12,
+                "y": 24,
+                "w": 12,
+                "h": 4
+            },
+            "type": "timeseries",
+            "title": "Axum Worker - Average Response Time per Endpoint (\u00b5s)",
+            "targets": [
+                {
+                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-worker-axum\", http_route=\"/health\"}[1m])) / sum(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-worker-axum\", http_route=\"/health\"}[1m])) * 1000000",
+                    "legendFormat": "/health",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                },
+                {
+                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-worker-axum\", http_route=\"/work\"}[1m])) / sum(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-worker-axum\", http_route=\"/work\"}[1m])) * 1000000",
+                    "legendFormat": "/work",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "unit": "\u00b5s",
+                    "decimals": 2
+                }
+            }
+        },
+        {
+            "id": 16,
+            "gridPos": {
+                "x": 0,
+                "y": 24,
+                "w": 12,
+                "h": 8
+            },
+            "type": "timeseries",
+            "title": "Axum Worker - Latency Percentiles (p50/p95/p99) - ms",
+            "targets": [
+                {
+                    "expr": "histogram_quantile(0.5, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-worker-axum\"}[5m])) by (le, http_route)) * 1000",
+                    "legendFormat": "p50 - {{http_route}}",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                },
+                {
+                    "expr": "histogram_quantile(0.95, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-worker-axum\"}[5m])) by (le, http_route)) * 1000",
+                    "legendFormat": "p95 - {{http_route}}",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                },
+                {
+                    "expr": "histogram_quantile(0.99, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-worker-axum\"}[5m])) by (le, http_route)) * 1000",
+                    "legendFormat": "p99 - {{http_route}}",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "unit": "ms",
+                    "decimals": 2
+                }
+            }
+        },
+        {
+            "id": 17,
+            "gridPos": {
+                "x": 12,
+                "y": 24,
+                "w": 6,
+                "h": 8
+            },
+            "type": "timeseries",
+            "title": "Axum Worker - Error Rate",
+            "targets": [
+                {
+                    "expr": "sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-axum\", http_status_code!~\"2..\"}[5m])) / sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-axum\"}[5m]))",
+                    "legendFormat": "error_rate",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "unit": "percentunit",
+                    "decimals": 4,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "value": null,
+                                "color": "green"
+                            },
+                            {
+                                "value": 0.01,
+                                "color": "yellow"
+                            },
+                            {
+                                "value": 0.05,
+                                "color": "red"
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        {
+            "id": 18,
+            "gridPos": {
+                "x": 18,
+                "y": 24,
+                "w": 6,
+                "h": 8
+            },
+            "type": "timeseries",
+            "title": "Axum Worker - Total Requests by Status Code",
+            "targets": [
+                {
+                    "expr": "sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-axum\"}[1m])) by (http_status_code)",
+                    "legendFormat": "{{http_status_code}}",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "unit": "reqps",
+                    "decimals": 2
+                }
+            }
+        },
+        {
+            "id": 20,
+            "gridPos": {
+                "x": 0,
+                "y": 28,
+                "w": 12,
+                "h": 4
+            },
+            "type": "timeseries",
+            "title": "Hyper Worker - Requests per Endpoint",
+            "targets": [
+                {
+                    "expr": "sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-hyper\", http_route=\"/health\"}[1m])) by (http_route)",
+                    "legendFormat": "{{http_route}}",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                },
+                {
+                    "expr": "sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-hyper\", http_route=\"/work\"}[1m])) by (http_route)",
+                    "legendFormat": "{{http_route}}",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "unit": "reqps",
+                    "decimals": 2
+                }
+            }
+        },
+        {
+            "id": 21,
+            "gridPos": {
+                "x": 12,
+                "y": 28,
+                "w": 12,
+                "h": 4
+            },
+            "type": "timeseries",
+            "title": "Hyper Worker - Average Response Time per Endpoint (\u00b5s)",
+            "targets": [
+                {
+                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-worker-hyper\", http_route=\"/health\"}[1m])) / sum(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-worker-hyper\", http_route=\"/health\"}[1m])) * 1000000",
+                    "legendFormat": "/health",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                },
+                {
+                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-worker-hyper\", http_route=\"/work\"}[1m])) / sum(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-worker-hyper\", http_route=\"/work\"}[1m])) * 1000000",
+                    "legendFormat": "/work",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "unit": "\u00b5s",
+                    "decimals": 2
+                }
+            }
+        },
+        {
+            "id": 22,
+            "gridPos": {
+                "x": 0,
+                "y": 24,
+                "w": 12,
+                "h": 8
+            },
+            "type": "timeseries",
+            "title": "Hyper Worker - Latency Percentiles (p50/p95/p99) - ms",
+            "targets": [
+                {
+                    "expr": "histogram_quantile(0.5, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-worker-hyper\"}[5m])) by (le, http_route)) * 1000",
+                    "legendFormat": "p50 - {{http_route}}",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                },
+                {
+                    "expr": "histogram_quantile(0.95, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-worker-hyper\"}[5m])) by (le, http_route)) * 1000",
+                    "legendFormat": "p95 - {{http_route}}",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                },
+                {
+                    "expr": "histogram_quantile(0.99, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-worker-hyper\"}[5m])) by (le, http_route)) * 1000",
+                    "legendFormat": "p99 - {{http_route}}",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "unit": "ms",
+                    "decimals": 2
+                }
+            }
+        },
+        {
+            "id": 23,
+            "gridPos": {
+                "x": 12,
+                "y": 24,
+                "w": 6,
+                "h": 8
+            },
+            "type": "timeseries",
+            "title": "Hyper Worker - Error Rate",
+            "targets": [
+                {
+                    "expr": "sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-hyper\", http_status_code!~\"2..\"}[5m])) / sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-hyper\"}[5m]))",
+                    "legendFormat": "error_rate",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "unit": "percentunit",
+                    "decimals": 4,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "value": null,
+                                "color": "green"
+                            },
+                            {
+                                "value": 0.01,
+                                "color": "yellow"
+                            },
+                            {
+                                "value": 0.05,
+                                "color": "red"
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        {
+            "id": 24,
+            "gridPos": {
+                "x": 18,
+                "y": 24,
+                "w": 6,
+                "h": 8
+            },
+            "type": "timeseries",
+            "title": "Hyper Worker - Total Requests by Status Code",
+            "targets": [
+                {
+                    "expr": "sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-hyper\"}[1m])) by (http_status_code)",
+                    "legendFormat": "{{http_status_code}}",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "unit": "reqps",
+                    "decimals": 2
+                }
+            }
+        },
+        {
+            "id": 26,
+            "gridPos": {
+                "x": 0,
+                "y": 32,
+                "w": 12,
+                "h": 4
+            },
+            "type": "timeseries",
+            "title": "Rocket Worker - Requests per Endpoint",
+            "targets": [
+                {
+                    "expr": "sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-rocket\", http_route=\"/health\"}[1m])) by (http_route)",
+                    "legendFormat": "{{http_route}}",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                },
+                {
+                    "expr": "sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-rocket\", http_route=\"/work\"}[1m])) by (http_route)",
+                    "legendFormat": "{{http_route}}",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "unit": "reqps",
+                    "decimals": 2
+                }
+            }
+        },
+        {
+            "id": 27,
+            "gridPos": {
+                "x": 12,
+                "y": 32,
+                "w": 12,
+                "h": 4
+            },
+            "type": "timeseries",
+            "title": "Rocket Worker - Average Response Time per Endpoint (\u00b5s)",
+            "targets": [
+                {
+                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-worker-rocket\", http_route=\"/health\"}[1m])) / sum(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-worker-rocket\", http_route=\"/health\"}[1m])) * 1000000",
+                    "legendFormat": "/health",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                },
+                {
+                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-worker-rocket\", http_route=\"/work\"}[1m])) / sum(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-worker-rocket\", http_route=\"/work\"}[1m])) * 1000000",
+                    "legendFormat": "/work",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "unit": "\u00b5s",
+                    "decimals": 2
+                }
+            }
+        },
+        {
+            "id": 28,
+            "gridPos": {
+                "x": 0,
+                "y": 24,
+                "w": 12,
+                "h": 8
+            },
+            "type": "timeseries",
+            "title": "Rocket Worker - Latency Percentiles (p50/p95/p99) - ms",
+            "targets": [
+                {
+                    "expr": "histogram_quantile(0.5, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-worker-rocket\"}[5m])) by (le, http_route)) * 1000",
+                    "legendFormat": "p50 - {{http_route}}",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                },
+                {
+                    "expr": "histogram_quantile(0.95, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-worker-rocket\"}[5m])) by (le, http_route)) * 1000",
+                    "legendFormat": "p95 - {{http_route}}",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                },
+                {
+                    "expr": "histogram_quantile(0.99, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-worker-rocket\"}[5m])) by (le, http_route)) * 1000",
+                    "legendFormat": "p99 - {{http_route}}",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "unit": "ms",
+                    "decimals": 2
+                }
+            }
+        },
+        {
+            "id": 29,
+            "gridPos": {
+                "x": 12,
+                "y": 24,
+                "w": 6,
+                "h": 8
+            },
+            "type": "timeseries",
+            "title": "Rocket Worker - Error Rate",
+            "targets": [
+                {
+                    "expr": "sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-rocket\", http_status_code!~\"2..\"}[5m])) / sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-rocket\"}[5m]))",
+                    "legendFormat": "error_rate",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "unit": "percentunit",
+                    "decimals": 4,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "value": null,
+                                "color": "green"
+                            },
+                            {
+                                "value": 0.01,
+                                "color": "yellow"
+                            },
+                            {
+                                "value": 0.05,
+                                "color": "red"
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        {
+            "id": 30,
+            "gridPos": {
+                "x": 18,
+                "y": 24,
+                "w": 6,
+                "h": 8
+            },
+            "type": "timeseries",
+            "title": "Rocket Worker - Total Requests by Status Code",
+            "targets": [
+                {
+                    "expr": "sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-rocket\"}[1m])) by (http_status_code)",
+                    "legendFormat": "{{http_status_code}}",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "unit": "reqps",
+                    "decimals": 2
+                }
+            }
+        },
+        {
+            "id": 120,
+            "gridPos": {
+                "x": 20,
+                "y": 8,
+                "w": 4,
+                "h": 4
+            },
+            "type": "stat",
+            "title": "All Services - Successful (2xx)",
+            "targets": [
+                {
+                    "expr": "sum(increase(lemonade_http_requests_total{http_status_code=~\"2..\"}[$__range]))",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "unit": "short",
+                    "decimals": 0,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "value": null,
+                                "color": "green"
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        {
+            "id": 121,
+            "gridPos": {
+                "x": 20,
+                "y": 12,
+                "w": 4,
+                "h": 4
+            },
+            "type": "stat",
+            "title": "All Services - Failed (non-2xx)",
+            "targets": [
+                {
+                    "expr": "sum(increase(lemonade_http_requests_total{http_status_code!~\"2..\"}[$__range]))",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "thresholds"
+                    },
+                    "unit": "short",
+                    "decimals": 0,
+                    "thresholds": {
+                        "mode": "absolute",
+                        "steps": [
+                            {
+                                "value": null,
+                                "color": "red"
+                            }
+                        ]
+                    }
+                }
+            }
+        },
+        {
+            "id": 122,
+            "gridPos": {
+                "x": 20,
+                "y": 0,
+                "w": 4,
+                "h": 4
+            },
+            "type": "stat",
+            "title": "All Services - Avg Response Time",
+            "targets": [
+                {
+                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum[1m])) / sum(rate(lemonade_http_request_duration_seconds_count[1m])) * 1000000",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "unit": "\u00b5s",
+                    "decimals": 2
+                }
+            }
+        },
+        {
+            "id": 123,
+            "gridPos": {
+                "x": 20,
+                "y": 4,
+                "w": 4,
+                "h": 4
+            },
+            "type": "stat",
+            "title": "All Services - Total Requests",
+            "targets": [
+                {
+                    "expr": "sum(increase(lemonade_http_requests_total[$__range]))",
+                    "datasource": {
+                        "type": "prometheus",
+                        "uid": "PBFA97CFB590B2093"
+                    }
+                }
+            ],
+            "fieldConfig": {
+                "defaults": {
+                    "color": {
+                        "mode": "palette-classic"
+                    },
+                    "unit": "short",
+                    "decimals": 0
+                }
+            }
+        }
+    ]
+}

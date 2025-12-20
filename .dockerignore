@@ -1,0 +1,48 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# Rust
+target/
+Cargo.lock
+**/*.rs.bk
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# CI/CD
+.github/
+
+# Testing
+tests/
+benches/
+*.profdata
+
+# Profiling
+flamegraph.svg
+perf.data*
+*.svg
+
+# PMAT
+.pmat/
+target/pmat-reports/
+
+# Coverage
+lcov.info
+target/llvm-cov/
+
+# Temporary files
+*.tmp
+*.log
+.DS_Store
+

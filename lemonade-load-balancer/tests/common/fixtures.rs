@@ -22,7 +22,12 @@ pub fn create_test_backend(
     let address =
         SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080 + id as u16);
     let backend_name = name.unwrap_or_else(|| format!("backend-{}", id));
-    BackendMeta::new(id, Some(backend_name), address, weight)
+    BackendMeta::new(
+        id,
+        Some(backend_name),
+        BackendAddress::from(address),
+        weight,
+    )
 }
 
 /// Create a test backend with custom name and port
@@ -37,7 +42,12 @@ pub fn create_test_backend_with_details(
     #[default(8080u16)] port: u16,
 ) -> BackendMeta {
     let address = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), port);
-    BackendMeta::new(id, Some(name.to_string()), address, Some(10u8))
+    BackendMeta::new(
+        id,
+        Some(name.to_string()),
+        BackendAddress::from(address),
+        Some(10u8),
+    )
 }
 
 /// Create a test configuration with specified parameters
@@ -85,6 +95,8 @@ pub fn create_test_config(
             interval: Duration::from_secs(10),
             timeout: Duration::from_secs(2),
         },
+        otlp_protocol: None,
+        otlp_endpoint: None,
     }
 }
 

@@ -9,7 +9,7 @@ fn create_test_backend_config() -> BackendConfig {
     BackendConfig {
         id: 1,
         name: Some("test-backend".to_string()),
-        address: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080),
+        address: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080).into(),
         weight: Some(10),
     }
 }
@@ -33,10 +33,7 @@ fn test_backend_metadata_getters() {
 
     assert_eq!(backend.id(), 1);
     assert_eq!(backend.name(), Some("test-backend"));
-    assert_eq!(
-        backend.address(),
-        SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080)
-    );
+    assert_eq!(backend.address().as_str(), "127.0.0.1:8080");
     assert_eq!(backend.weight(), Some(10));
 }
 
@@ -232,10 +229,7 @@ fn test_backend_config_from_backend_meta() {
     let config: BackendConfig = meta.into();
     assert_eq!(config.id, 5);
     assert_eq!(config.name, Some("test-backend".to_string()));
-    assert_eq!(
-        config.address,
-        SocketAddr::new(IpAddr::V4(Ipv4Addr::new(192, 168, 1, 1)), 9090)
-    );
+    assert_eq!(config.address.as_str(), "192.168.1.1:9090");
     assert_eq!(config.weight, Some(20));
 }
 
@@ -262,7 +256,7 @@ fn test_backend_concurrent_connections() {
     let backend_config = BackendConfig {
         id: 0,
         name: Some("concurrent-test".to_string()),
-        address: "127.0.0.1:8080".parse().unwrap(),
+        address: BackendAddress::parse("127.0.0.1:8080").unwrap(),
         weight: Some(10),
     };
     let backend = Arc::new(Backend::new(backend_config));
@@ -293,7 +287,7 @@ fn test_backend_metrics_timestamp_update() {
     let backend_config = BackendConfig {
         id: 0,
         name: Some("timestamp-test".to_string()),
-        address: "127.0.0.1:8080".parse().unwrap(),
+        address: BackendAddress::parse("127.0.0.1:8080").unwrap(),
         weight: Some(10),
     };
     let backend = Backend::new(backend_config);

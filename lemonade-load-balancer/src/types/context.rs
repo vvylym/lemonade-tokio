@@ -37,7 +37,7 @@ impl Context {
         let backend_metas: Vec<BackendMeta> = config
             .backends
             .iter()
-            .map(|c| BackendMeta::new(c.id, c.name.clone(), c.address, c.weight))
+            .map(|c| BackendMeta::new(c.id, c.name.clone(), c.address.clone(), c.weight))
             .collect();
         let strategy = StrategyBuilder::new()
             .with_strategy(config.strategy.clone())
@@ -133,7 +133,7 @@ impl Context {
                 // Backend exists - check if changed
                 let old_addr = old_backend.address();
                 let old_name = old_backend.name();
-                if new_config.address != old_addr
+                if new_config.address != *old_addr
                     || new_config.name.as_deref() != old_name
                     || new_config.weight != old_backend.weight()
                 {
@@ -181,7 +181,7 @@ impl Context {
         let backend_metas: Vec<BackendMeta> = new_config
             .backends
             .iter()
-            .map(|c| BackendMeta::new(c.id, c.name.clone(), c.address, c.weight))
+            .map(|c| BackendMeta::new(c.id, c.name.clone(), c.address.clone(), c.weight))
             .collect();
         let new_strategy = StrategyBuilder::new()
             .with_strategy(new_config.strategy.clone())

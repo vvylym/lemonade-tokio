@@ -151,6 +151,9 @@ impl ConfigBuilder {
                 ))
             })?;
 
+        let otlp_endpoint = std::env::var(LB_OTLP_ENDPOINT_ENV_KEY).ok();
+        let otlp_protocol = std::env::var(LB_OTLP_PROTOCOL_ENV_KEY).ok();
+
         Ok(Config {
             source: ConfigSource::Environment,
             runtime: RuntimeConfig {
@@ -175,6 +178,8 @@ impl ConfigBuilder {
                 interval: Duration::from_millis(metrics_interval_ms),
                 timeout: Duration::from_millis(metrics_timeout_ms),
             },
+            otlp_protocol,
+            otlp_endpoint,
         })
     }
 
@@ -264,4 +269,8 @@ mod constants {
 
     pub const LB_METRICS_INTERVAL_MS_DEFAULT: u64 = 10000; // 10 seconds
     pub const LB_METRICS_TIMEOUT_MS_DEFAULT: u64 = 10000; // 10 seconds
+
+    pub const LB_OTLP_ENDPOINT_ENV_KEY: &str = "LEMONADE_OTLP_ENDPOINT";
+
+    pub const LB_OTLP_PROTOCOL_ENV_KEY: &str = "LEMONADE_OTLP_PROTOCOL";
 }

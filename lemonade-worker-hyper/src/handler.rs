@@ -7,18 +7,59 @@ use lemonade_service::{
     error_response::ErrorResponse,
     worker::{HealthService, WorkService},
 };
+use opentelemetry::global;
+use opentelemetry_http::HeaderExtractor;
 use std::convert::Infallible;
-use tracing::instrument;
+use std::time::Instant;
+use tracing::{Instrument, instrument};
 
 /// Handle HTTP request
-#[instrument(skip(state), fields(http.method = %req.method(), http.route = %req.uri().path()))]
 pub async fn handle_request(
     req: Request<hyper::body::Incoming>,
     state: AppState,
 ) -> Result<Response<Full<Bytes>>, Infallible> {
-    let path = req.uri().path();
+    let start = Instant::now();
+    let metrics = lemonade_observability::get_http_metrics("lemonade-worker-hyper");
 
-    let response = match path {
+    // Extract trace context from headers for distributed tracing
+    let extractor = HeaderExtractor(req.headers());
+    let _parent_cx = global::get_text_map_propagator(|prop| prop.extract(&extractor));
+
+    // Create span with HTTP attributes
+    let method = req.method().clone();
+    let method_str = method.to_string();
+    let path = req.uri().path().to_string();
+
+    let span = tracing::span!(
+        tracing::Level::INFO,
+        "http_request",
+        framework.name = "hyper",
+        http.method = %method,
+        http.route = %path,
+        http.scheme = %req.uri().scheme_str().unwrap_or("http"),
+        http.target = %req.uri().path_and_query().map(|p| p.as_str()).unwrap_or(""),
+    );
+
+    // Execute handler within the span context
+    let result = handle_request_inner(req, state, path.clone())
+        .instrument(span)
+        .await;
+
+    // Record metrics
+    let status_code = result.as_ref().map(|r| r.status().as_u16()).unwrap_or(500);
+    let duration_micros = start.elapsed().as_micros() as u64;
+    metrics.record_request(&method_str, &path, status_code, duration_micros);
+
+    result
+}
+
+#[instrument(skip(state), fields(framework.name = "hyper", http.route = %path))]
+async fn handle_request_inner(
+    req: Request<hyper::body::Incoming>,
+    state: AppState,
+    path: String,
+) -> Result<Response<Full<Bytes>>, Infallible> {
+    let response = match path.as_str() {
         "/health" => match state.worker_service.health_check().await {
             Ok(response) => {
                 let json = serde_json::to_string(&response).unwrap_or_default();

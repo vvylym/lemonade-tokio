@@ -1,0 +1,211 @@
+services:
+  # Load Balancer
+  load-balancer:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: lemonade-load-balancer
+    command: ["load-balancer", "--config", "/etc/lemonade/load-balancer.yaml"]
+    volumes:
+      - ../config:/etc/lemonade:ro
+    ports:
+      - "50501:50501"
+    environment:
+      - RUST_LOG=info
+    depends_on:
+      otel-collector:
+        condition: service_started
+      worker-actix:
+        condition: service_healthy
+      worker-axum:
+        condition: service_healthy
+      worker-hyper:
+        condition: service_healthy
+      worker-rocket:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:50501/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    networks:
+      - lb-workers-net
+      - observability-net
+    restart: unless-stopped
+
+  # Worker 1: Actix
+  worker-actix:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: lemonade-worker-actix
+    command: ["worker", "--framework", "actix", "--config", "/etc/lemonade/worker-1.toml"]
+    volumes:
+      - ../config:/etc/lemonade:ro
+    ports:
+      - "50510:50510"
+    environment:
+      - RUST_LOG=info
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:50510/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - lb-workers-net
+      - observability-net
+    restart: unless-stopped
+
+  # Worker 2: Axum
+  worker-axum:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: lemonade-worker-axum
+    command: ["worker", "--framework", "axum", "--config", "/etc/lemonade/worker-2.json"]
+    volumes:
+      - ../config:/etc/lemonade:ro
+    ports:
+      - "50520:50520"
+    environment:
+      - RUST_LOG=info
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:50520/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - lb-workers-net
+      - observability-net
+    restart: unless-stopped
+
+  # Worker 3: Hyper
+  worker-hyper:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: lemonade-worker-hyper
+    command: ["worker", "--framework", "hyper", "--config", "/etc/lemonade/worker-3.yaml"]
+    volumes:
+      - ../config:/etc/lemonade:ro
+    ports:
+      - "50530:50530"
+    environment:
+      - RUST_LOG=info
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:50530/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - lb-workers-net
+      - observability-net
+    restart: unless-stopped
+
+  # Worker 4: Rocket
+  worker-rocket:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: lemonade-worker-rocket
+    command: ["worker", "--framework", "rocket", "--config", "/etc/lemonade/worker-4.toml"]
+    volumes:
+      - ../config:/etc/lemonade:ro
+    ports:
+      - "50540:50540"
+    environment:
+      - RUST_LOG=info
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:50540/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    networks:
+      - lb-workers-net
+      - observability-net
+    restart: unless-stopped
+
+  # OpenTelemetry Collector
+  otel-collector:
+    image: otel/opentelemetry-collector:latest
+    container_name: otel-collector
+    command: ["--config=/etc/otel-collector/config.yaml"]
+    volumes:
+      - ./otel-collector/config.yaml:/etc/otel-collector/config.yaml
+    ports:
+      - "50601:4317"   # OTLP gRPC receiver
+      - "50602:4318"   # OTLP HTTP receiver
+      - "50603:8889"   # Prometheus metrics
+    depends_on:
+      - jaeger
+      - prometheus
+    networks:
+      - observability-net
+    restart: unless-stopped
+
+  # Jaeger (Tracing)
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: jaeger
+    ports:
+      - "50610:16686"  # Jaeger UI
+      - "50611:14268"  # Jaeger HTTP collector
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    networks:
+      - observability-net
+    restart: unless-stopped
+
+  # Prometheus (Metrics)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    ports:
+      - "50620:9090"
+    networks:
+      - observability-net
+    restart: unless-stopped
+
+  # Grafana (Visualization)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "50630:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=lemonade
+      - GF_SECURITY_ADMIN_PASSWORD=lemonade
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    depends_on:
+      - prometheus
+      - jaeger
+    networks:
+      - observability-net
+    restart: unless-stopped
+
+networks:
+  lb-workers-net:
+    driver: bridge
+  observability-net:
+    driver: bridge
+
+volumes:
+  prometheus-data:
+  grafana-data:

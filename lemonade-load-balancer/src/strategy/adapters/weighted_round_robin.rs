@@ -46,7 +46,7 @@ impl StrategyService for WeightedRoundRobinStrategy {
                 return Ok(BackendMeta::new(
                     backend.id(),
                     backend.name(),
-                    backend.address(),
+                    backend.address().clone(),
                     backend.weight(),
                 ));
             }
@@ -57,7 +57,7 @@ impl StrategyService for WeightedRoundRobinStrategy {
         Ok(BackendMeta::new(
             backend.id(),
             backend.name(),
-            backend.address(),
+            backend.address().clone(),
             backend.weight(),
         ))
     }

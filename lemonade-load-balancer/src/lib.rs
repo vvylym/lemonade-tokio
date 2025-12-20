@@ -26,14 +26,27 @@ use std::{path::PathBuf, sync::Arc};
 /// * `Err(Box<dyn std::error::Error>)` if there was an error
 #[tracing::instrument(skip_all, fields(service.name = "lemonade-load-balancer", config.file = ?config_file))]
 pub async fn run(config_file: Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
+    // Load config
+    let config = ConfigBuilder::from_file(config_file.as_deref())?;
+
     // Initialize tracing with load balancer service name and package version
+    // OTLP config comes from environment variables (OTEL_EXPORTER_OTLP_ENDPOINT, OTEL_EXPORTER_OTLP_PROTOCOL)
     lemonade_observability::init_tracing(
         "lemonade-load-balancer",
         env!("CARGO_PKG_VERSION"),
+        "lemonade-load-balancer",
+        config.otlp_endpoint.as_deref(),
+        config.otlp_protocol.as_deref(),
     )?;
 
-    // Load config
-    let config = ConfigBuilder::from_file(config_file.as_deref())?;
+    // Initialize metrics
+    lemonade_observability::init_metrics(
+        "lemonade-load-balancer",
+        env!("CARGO_PKG_VERSION"),
+        "lemonade-load-balancer",
+        config.otlp_endpoint.as_deref(),
+        config.otlp_protocol.as_deref(),
+    )?;
 
     // Create context from config (context-first initialization)
     let ctx = Arc::new(Context::new(config.clone())?);

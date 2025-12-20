@@ -29,7 +29,7 @@ impl StrategyService for RoundRobinStrategy {
         Ok(BackendMeta::new(
             backend.id(),
             backend.name(),
-            backend.address(),
+            backend.address().clone(),
             backend.weight(),
         ))
     }

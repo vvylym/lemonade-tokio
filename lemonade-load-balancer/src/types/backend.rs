@@ -12,7 +12,7 @@ pub struct Backend {
     // Immutable metadata
     id: BackendId,
     name: Option<String>,
-    address: SocketAddr,
+    address: BackendAddress,
     weight: Option<u8>,
 
     // Mutable state (atomic for lock-free access)
@@ -60,8 +60,8 @@ impl Backend {
     }
 
     /// Get the backend address
-    pub fn address(&self) -> SocketAddr {
-        self.address
+    pub fn address(&self) -> &BackendAddress {
+        &self.address
     }
 
     /// Get the backend weight
@@ -208,8 +208,8 @@ pub struct BackendConfig {
     pub id: BackendId,
     /// Optional human-readable backend name
     pub name: Option<String>,
-    /// Backend socket address (IP:port)
-    pub address: SocketAddr,
+    /// Backend address (IP:port or hostname:port)
+    pub address: BackendAddress,
     /// Optional weight for weighted load balancing strategies
     pub weight: Option<u8>,
 }
@@ -219,7 +219,7 @@ impl From<BackendMeta> for BackendConfig {
         Self {
             id: *meta.id(),
             name: meta.name().cloned(),
-            address: *meta.address().as_ref(),
+            address: meta.address().clone(),
             weight: meta.weight(),
         }
     }

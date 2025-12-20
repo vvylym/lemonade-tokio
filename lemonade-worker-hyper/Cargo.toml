@@ -11,11 +11,13 @@ documentation.workspace = true
 publish.workspace = true
 
 [dependencies]
-hyper = "1.8.1"
+hyper = { version = "1.8.1", features = ["server"] }
 hyper-util = "0.1.4"
 http-body-util = "0.1.1"
 tokio = { workspace = true }
 serde_json = { workspace = true }
+opentelemetry = { workspace = true }
+opentelemetry-http = { version = "0.31.0", features = ["hyper"] }
 
 # Workspace dependencies
 lemonade-service = { workspace = true }
