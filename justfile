@@ -60,6 +60,33 @@ run-worker-hyper:
 run-worker-rocket:
     cargo run --release -- worker --framework rocket --config config/worker-4.toml
 
-# Run benchmark
-bench:
+
+# Benchmark load balancer
+bench-lb:
+    @echo "🚀 Benchmarking load balancer..."
+    LEMONADE_BENCH_ADDRESS="localhost:50501" \
+    cargo bench -p lemonade --bench lemonade_benchmark
+
+# Benchmark worker 1 (Actix)
+bench-actix:
+    @echo "🚀 Benchmarking worker-1 (Actix)..."
+    LEMONADE_BENCH_ADDRESS="localhost:50510" \
+    cargo bench -p lemonade --bench lemonade_benchmark
+
+# Benchmark worker 2 (Axum)
+bench-axum:
+    @echo "🚀 Benchmarking worker-2 (Axum)..."
+    LEMONADE_BENCH_ADDRESS="localhost:50520" \
+    cargo bench -p lemonade --bench lemonade_benchmark
+
+# Benchmark worker 3 (Hyper)
+bench-hyper:
+    @echo "🚀 Benchmarking worker-3 (Hyper)..."
+    LEMONADE_BENCH_ADDRESS="localhost:50530" \
+    cargo bench -p lemonade --bench lemonade_benchmark
+
+# Benchmark worker 4 (Rocket)
+bench-rocket:
+    @echo "🚀 Benchmarking worker-4 (Rocket)..."
+    LEMONADE_BENCH_ADDRESS="localhost:50540" \
     cargo bench -p lemonade --bench lemonade_benchmark
