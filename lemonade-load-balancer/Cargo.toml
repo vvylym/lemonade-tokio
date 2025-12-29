@@ -47,7 +47,7 @@ mockall = { workspace = true }
 proptest = { workspace = true }
 quickcheck = { workspace = true }
 rstest = { workspace = true }
-tempfile = "3.10"
+tempfile = "3.24"
 
 [lints]
 workspace = true
