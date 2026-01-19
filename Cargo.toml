@@ -28,7 +28,7 @@ thiserror = "2.0"
 async-trait = "0.1"
 
 # Async runtime
-tokio = { version = "1.48", features = ["full"] }
+tokio = { version = "1.49", features = ["full"] }
 
 # Tests
 mockall = "0.14.0"
@@ -46,7 +46,7 @@ lemonade-observability = { path = "lemonade-observability" }
 
 # Observability
 tracing = "0.1"
-tracing-opentelemetry = "0.32.0"
+tracing-opentelemetry = "0.32.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "registry", "fmt", "ansi", "json"] }
 opentelemetry = { version = "0.31.0", features = ["trace", "metrics", "logs"] }
 opentelemetry-otlp = { version = "0.31.0", features = ["trace", "metrics", "logs"] }
