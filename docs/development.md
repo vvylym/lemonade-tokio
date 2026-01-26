@@ -1,6 +1,6 @@
 # Development Guide
 
-This guide covers development workflow, testing strategies, and contribution guidelines for the Lemonade Load Balancer project.
+Development workflow, testing, and contribution guidelines. Common tasks live in the root [justfile](../justfile): `just test`, `just check`, `just coverage`, `just fmt`, `just clippy`, and run/bench recipes.
 
 ## Getting Started
 
@@ -15,19 +15,12 @@ This guide covers development workflow, testing strategies, and contribution gui
 ### Initial Setup
 
 ```bash
-# Clone the repository
 git clone https://github.com/vvylym/lemonade-tokio.git
 cd lemonade-tokio
 
-# Build all crates
-cargo build --workspace --all-targets --all-features
-
-# Run tests
-cargo test --workspace --all-targets --all-features
-
-# Check code quality
-cargo fmt --all --check
-cargo clippy --workspace --all-features --all-targets -- -D warnings
+just build    # cargo build --workspace --all-targets --all-features
+just test     # run tests
+just check    # fmt-check + clippy + test (CI equivalent)
 ```
 
 ## Project Structure
@@ -59,40 +52,18 @@ lemonade-tokio/
 ### Standard Development Loop
 
 ```bash
-# 1. Make changes to code
-
-# 2. Format code
-cargo fmt --all
-
-# 3. Run clippy
-cargo clippy --workspace --all-features --all-targets -- -D warnings
-
-# 4. Run tests with coverage
-cargo llvm-cov --workspace --all-targets --all-features --summary-only
-
-# 5. Run full test suite
-cargo test --workspace --all-targets --all-features
-
-# Complete check (CI equivalent)
-cargo fmt --all && \
-  cargo clippy --workspace --all-features --all-targets -- -D warnings && \
-  cargo llvm-cov --summary-only --workspace --all-targets --all-features
+just fmt      # format
+just clippy   # lint
+just coverage  # coverage summary (report: target/llvm-cov/html/index.html)
+just test     # full test suite
+just check    # CI-equivalent (fmt-check + clippy + test)
 ```
 
 ### Coverage Requirements
 
 **Minimum coverage**: 85% across all crates
 
-Generate detailed coverage report:
-
-```bash
-# HTML report
-cargo llvm-cov --workspace --all-targets --all-features --html
-open target/llvm-cov/html/index.html
-
-# LCOV for CI
-cargo llvm-cov --workspace --all-targets --all-features --lcov --output-path lcov.info
-```
+Generate detailed coverage: `just coverage` (summary), or `cargo llvm-cov --workspace --all-targets --all-features --html` for HTML; LCOV: `cargo llvm-cov ... --lcov --output-path lcov.info`.
 
 ## Testing Strategy
 
@@ -174,8 +145,8 @@ async fn test_round_robin_distribution() {
 Test hot reload manually:
 
 ```bash
-# Terminal 1: Start load balancer
-cargo run --release -- load-balancer --config config/load-balancer.yaml
+# Terminal 1: Start load balancer (from repo root)
+just run-lb   # or: cargo run --release -- load-balancer --config config/load-balancer.yaml
 
 # Terminal 2: Monitor logs
 tail -f /tmp/lemonade-lb.log
@@ -336,13 +307,7 @@ valgrind --tool=massif target/release/lemonade load-balancer
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature/my-feature`
 3. Make changes with tests and documentation
-4. Ensure all checks pass:
-   ```bash
-   cargo fmt --all && \
-   cargo clippy --workspace --all-features --all-targets -- -D warnings && \
-   cargo test --workspace --all-targets --all-features && \
-   cargo llvm-cov --summary-only --workspace --all-targets --all-features
-   ```
+4. Ensure all checks pass: `just check` (and `just coverage` if verifying coverage).
 5. Commit with descriptive message
 6. Push and create pull request
 7. Address review feedback

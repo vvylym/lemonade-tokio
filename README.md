@@ -14,8 +14,10 @@ A high-performance, asynchronous TCP load balancer written in Rust with support 
 ```bash
 git clone https://github.com/vvylym/lemonade-tokio.git
 cd lemonade-tokio
-cargo build --release
+just build   # or: cargo build --release
 ```
+
+**Task runner:** Root [justfile](justfile)—`just` / `just --list` for recipes. Main ones: `just build`, `just test`, `just check`, `just run-lb`, `just run-worker-actix` (or `-axum` / `-hyper` / `-rocket`), `just bench-lb` / `just bench-actix` etc.
 
 ### Running Workers
 
@@ -39,7 +41,7 @@ cargo run --release -- worker --framework rocket \
   --address 127.0.0.1:50540 --name worker-4 --delay 20
 ```
 
-Supported frameworks: `actix`, `axum`, `hyper`, `rocket`
+Supported frameworks: `actix`, `axum`, `hyper`, `rocket`. Or use `just run-worker-actix`, `just run-worker-axum`, `just run-worker-hyper`, `just run-worker-rocket` (see [justfile](justfile)).
 
 ### Running Load Balancer
 
@@ -53,6 +55,8 @@ LEMONADE_LB_STRATEGY=round_robin \
 LEMONADE_LB_BACKEND_ADDRESSES=127.0.0.1:50510,127.0.0.1:50520 \
 cargo run --release -- load-balancer
 ```
+
+Or use `just run-lb` from the repo root (see [justfile](justfile)).
 
 ### Testing the Load Balancer
 
@@ -105,38 +109,28 @@ Lemonade follows a clean architecture with clear separation of concerns:
 
 ## Development
 
+Use the root [justfile](justfile) for common tasks: `just test`, `just check` (CI-equivalent), `just coverage`, `just fmt`, `just clippy`.
+
 ### Running Tests
 
 ```bash
-# Run all tests
-cargo test --workspace --all-targets --all-features
+just test
+# or: cargo test --workspace --all-targets --all-features
 
-# Run with coverage
-cargo llvm-cov --workspace --all-targets --all-features --html
-open target/llvm-cov/html/index.html
+just coverage   # summary; report at target/llvm-cov/html/index.html
 ```
 
 ### Linting and Formatting
 
 ```bash
-# Format code
-cargo fmt --all
-
-# Run clippy
-cargo clippy --workspace --all-features --all-targets
-
-# Check everything (CI command)
-cargo fmt --all && \
-cargo clippy --workspace --all-features --all-targets -- -D warnings && \
-cargo llvm-cov --summary-only --workspace --all-targets --all-features
+just fmt        # format
+just clippy     # lint
+just check      # fmt-check + clippy + test (CI equivalent)
 ```
 
 ### Hot Reload Testing
 
-1. Start load balancer with config file:
-   ```bash
-   cargo run --release -- load-balancer --config config/load-balancer.yaml
-   ```
+1. Start load balancer: `just run-lb` (or `cargo run --release -- load-balancer --config config/load-balancer.yaml`).
 
 2. Modify `config/load-balancer.yaml` (change strategy, add/remove backends, etc.)
 
@@ -186,10 +180,9 @@ Workers support JSON, TOML, or YAML configuration files. See individual worker c
 
 ## Documentation
 
-- **[Architecture Documentation](docs/architecture.md)**: Detailed architecture, design decisions, and implementation details
-- **[Development Guide](docs/development.md)**: Contributing guidelines, testing strategies, and development workflow
-- **[Deployment Guide](docs/deployment.md)**: Production deployment best practices
-- **[Load Balancer README](lemonade-load-balancer/README.md)**: Complete load balancer library documentation
+- **[Architecture](docs/architecture.md)**: Design, ports/adapters, and implementation details
+- **[Development](docs/development.md)**: Contributing, testing, and workflow (see also root [justfile](justfile))
+- **[Load Balancer](lemonade-load-balancer/README.md)**: Load balancer library
 - **[Service README](lemonade-service/README.md)**: Worker service library documentation
 - **[Observability README](lemonade-observability/README.md)**: Observability and telemetry documentation
 - **[CLI README](lemonade/README.md)**: Command-line interface documentation

@@ -1,6 +1,6 @@
 # Docker Setup
 
-This directory contains Docker configurations for running the Lemonade Load Balancer with a full observability stack.
+Docker configs for running the Lemonade load balancer and observability stack. From the repo root, use the [justfile](../justfile) for local build/test/bench (e.g. `just bench-lb` against the stack).
 
 ## Quick Start
 
@@ -20,7 +20,7 @@ docker compose -f docker/docker-compose.yml down
 ### Application Services (host ports and commands)
 
 - **load-balancer** (50501)  
-  CMD: `lemonade load-balancer --config /etc/lemonade/load-balancer.yaml`
+  CMD: `lemonade load-balancer --config /etc/lemonade/load-balancer.yaml`. Uses `ulimits.nofile: 8192` to avoid "Too many open files"; concurrent connections are capped (see `proxy.max_connections`, max 4096 in-process).
 - **worker-actix** (50510)  
   CMD: `lemonade worker --framework actix --config /etc/lemonade/worker-1.toml`
 - **worker-axum** (50520)  
@@ -44,7 +44,7 @@ Configs are mounted read-only from the repository root `config/` directory to `/
 - **Load Balancer**: http://localhost:50501
 - **Jaeger UI**: http://localhost:50610
 - **Prometheus**: http://localhost:50620
-- **Grafana**: http://localhost:50630 (admin/admin)
+- **Grafana**: http://localhost:50630 (lemonade/lemonade)
 
 ## Configuration
 

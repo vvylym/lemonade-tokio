@@ -17,6 +17,10 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio::task::JoinSet;
 use tracing::instrument;
 
+/// Upper bound on concurrent connection-handler tasks to avoid EMFILE (too many open files).
+/// Each handler holds ~2 FDs (client + backend). Default container nofile is often 1024.
+const MAX_CONCURRENT_HANDLERS: usize = 4096;
+
 /// Tokio-based proxy service implementation
 #[derive(Clone)]
 pub struct TokioProxyService {
@@ -239,24 +243,24 @@ impl ProxyService for TokioProxyService {
                 accept_result = listener.accept() => {
                     match accept_result {
                         Ok((stream, peer_addr)) => {
-                            // Check max connections
                             let config = self.config.load();
-                            if let Some(max_conns) = config.max_connections {
-                                let routing = ctx.routing_table();
-                                let total_connections: usize = routing
-                                    .all_backends()
-                                    .iter()
-                                    .map(|b| b.active_connections())
-                                    .sum();
-                                if total_connections >= max_conns as usize {
-                                    tracing::warn!(
-                                        "Max connections reached ({}), rejecting connection from {}",
-                                        max_conns,
-                                        peer_addr
-                                    );
-                                    drop(stream);
-                                    continue;
-                                }
+                            let effective_max = config
+                                .max_connections
+                                .map(|c| c as usize)
+                                .unwrap_or(1024)
+                                .min(MAX_CONCURRENT_HANDLERS);
+
+                            // Cap by in-flight task count to avoid EMFILE (each handler holds ~2 FDs).
+                            if conn_tasks.len() >= effective_max {
+                                tracing::warn!(
+                                    "Too many connections ({} in-flight, max {}), rejecting from {}",
+                                    conn_tasks.len(),
+                                    effective_max,
+                                    peer_addr
+                                );
+                                drop(stream);
+                                tokio::task::yield_now().await;
+                                continue;
                             }
 
                             // Pick backend using strategy

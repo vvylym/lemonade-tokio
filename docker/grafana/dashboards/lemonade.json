@@ -23,10 +23,10 @@
                 "h": 4
             },
             "type": "stat",
-            "title": "Load Balancer - Avg Response Time",
+            "title": "Load Balancer - Avg connection duration (ms)",
             "targets": [
                 {
-                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-load-balancer\"}[1m])) / sum(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-load-balancer\"}[1m])) * 1000000",
+                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-load-balancer\"}[1m])) / sum(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-load-balancer\"}[1m]))",
                     "datasource": {
                         "type": "prometheus",
                         "uid": "PBFA97CFB590B2093"
@@ -38,7 +38,7 @@
                     "color": {
                         "mode": "palette-classic"
                     },
-                    "unit": "\u00b5s",
+                    "unit": "suffix: ms",
                     "decimals": 2
                 }
             }
@@ -52,10 +52,10 @@
                 "h": 4
             },
             "type": "stat",
-            "title": "Actix-Web Worker - Avg Response Time",
+            "title": "Actix-Web Worker - Avg /work response time (ms)",
             "targets": [
                 {
-                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-worker-actix\"}[1m])) / sum(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-worker-actix\"}[1m])) * 1000000",
+                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-worker-actix\", http_route=\"/work\"}[1m])) / sum(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-worker-actix\", http_route=\"/work\"}[1m]))",
                     "datasource": {
                         "type": "prometheus",
                         "uid": "PBFA97CFB590B2093"
@@ -67,7 +67,7 @@
                     "color": {
                         "mode": "palette-classic"
                     },
-                    "unit": "\u00b5s",
+                    "unit": "suffix: ms",
                     "decimals": 2
                 }
             }
@@ -81,10 +81,10 @@
                 "h": 4
             },
             "type": "stat",
-            "title": "Axum Worker - Avg Response Time",
+            "title": "Axum Worker - Avg /work response time (ms)",
             "targets": [
                 {
-                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-worker-axum\"}[1m])) / sum(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-worker-axum\"}[1m])) * 1000000",
+                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-worker-axum\", http_route=\"/work\"}[1m])) / sum(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-worker-axum\", http_route=\"/work\"}[1m]))",
                     "datasource": {
                         "type": "prometheus",
                         "uid": "PBFA97CFB590B2093"
@@ -96,7 +96,7 @@
                     "color": {
                         "mode": "palette-classic"
                     },
-                    "unit": "\u00b5s",
+                    "unit": "suffix: ms",
                     "decimals": 2
                 }
             }
@@ -110,10 +110,10 @@
                 "h": 4
             },
             "type": "stat",
-            "title": "Hyper Worker - Avg Response Time",
+            "title": "Hyper Worker - Avg /work response time (ms)",
             "targets": [
                 {
-                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-worker-hyper\"}[1m])) / sum(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-worker-hyper\"}[1m])) * 1000000",
+                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-worker-hyper\", http_route=\"/work\"}[1m])) / sum(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-worker-hyper\", http_route=\"/work\"}[1m]))",
                     "datasource": {
                         "type": "prometheus",
                         "uid": "PBFA97CFB590B2093"
@@ -125,7 +125,7 @@
                     "color": {
                         "mode": "palette-classic"
                     },
-                    "unit": "\u00b5s",
+                    "unit": "suffix: ms",
                     "decimals": 2
                 }
             }
@@ -139,10 +139,10 @@
                 "h": 4
             },
             "type": "stat",
-            "title": "Rocket Worker - Avg Response Time",
+            "title": "Rocket Worker - Avg /work response time (ms)",
             "targets": [
                 {
-                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-worker-rocket\"}[1m])) / sum(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-worker-rocket\"}[1m])) * 1000000",
+                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-worker-rocket\", http_route=\"/work\"}[1m])) / sum(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-worker-rocket\", http_route=\"/work\"}[1m]))",
                     "datasource": {
                         "type": "prometheus",
                         "uid": "PBFA97CFB590B2093"
@@ -154,7 +154,7 @@
                     "color": {
                         "mode": "palette-classic"
                     },
-                    "unit": "\u00b5s",
+                    "unit": "suffix: ms",
                     "decimals": 2
                 }
             }
@@ -168,7 +168,8 @@
                 "h": 4
             },
             "type": "stat",
-            "title": "Load Balancer - Total Requests",
+            "title": "Load Balancer - Total connections",
+            "description": "TCP connections (LB is a TCP proxy).",
             "targets": [
                 {
                     "expr": "sum(increase(lemonade_http_requests_total{otel_scope_name=\"lemonade-load-balancer\"}[$__range]))",
@@ -693,7 +694,8 @@
                 "h": 4
             },
             "type": "timeseries",
-            "title": "Load Balancer - Requests per Endpoint",
+            "title": "Load Balancer - Connections per route",
+            "description": "Connection rate by http_route (LB uses \"/\").",
             "targets": [
                 {
                     "expr": "sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-load-balancer\"}[1m])) by (http_route)",
@@ -723,10 +725,11 @@
                 "h": 4
             },
             "type": "timeseries",
-            "title": "Load Balancer - Average Response Time per Endpoint (\u00b5s)",
+            "title": "Load Balancer - Avg connection duration (ms)",
+            "description": "TCP connection lifetime (accept→close). One metric per connection.",
             "targets": [
                 {
-                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-load-balancer\"}[1m])) / sum(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-load-balancer\"}[1m])) * 1000000",
+                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-load-balancer\"}[1m])) / sum(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-load-balancer\"}[1m]))",
                     "legendFormat": "average",
                     "datasource": {
                         "type": "prometheus",
@@ -739,7 +742,7 @@
                     "color": {
                         "mode": "palette-classic"
                     },
-                    "unit": "\u00b5s",
+                    "unit": "suffix: ms",
                     "decimals": 2
                 }
             }
@@ -756,7 +759,7 @@
             "title": "Load Balancer - Latency Percentiles (p50/p95/p99) - ms",
             "targets": [
                 {
-                    "expr": "histogram_quantile(0.5, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-load-balancer\"}[5m])) by (le)) * 1000",
+                    "expr": "histogram_quantile(0.5, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-load-balancer\"}[5m])) by (le))",
                     "legendFormat": "p50",
                     "datasource": {
                         "type": "prometheus",
@@ -764,7 +767,7 @@
                     }
                 },
                 {
-                    "expr": "histogram_quantile(0.95, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-load-balancer\"}[5m])) by (le)) * 1000",
+                    "expr": "histogram_quantile(0.95, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-load-balancer\"}[5m])) by (le))",
                     "legendFormat": "p95",
                     "datasource": {
                         "type": "prometheus",
@@ -772,7 +775,7 @@
                     }
                 },
                 {
-                    "expr": "histogram_quantile(0.99, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-load-balancer\"}[5m])) by (le)) * 1000",
+                    "expr": "histogram_quantile(0.99, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-load-balancer\"}[5m])) by (le))",
                     "legendFormat": "p99",
                     "datasource": {
                         "type": "prometheus",
@@ -785,7 +788,7 @@
                     "color": {
                         "mode": "palette-classic"
                     },
-                    "unit": "ms",
+                    "unit": "suffix: ms",
                     "decimals": 2
                 }
             }
@@ -802,7 +805,7 @@
             "title": "Load Balancer - Error Rate",
             "targets": [
                 {
-                    "expr": "sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-load-balancer\", http_status_code!~\"2..\"}[5m])) / sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-load-balancer\"}[5m]))",
+                    "expr": "(sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-load-balancer\", http_status_code!~\"2..\"}[5m])) / sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-load-balancer\"}[5m]))) or vector(0)",
                     "legendFormat": "error_rate",
                     "datasource": {
                         "type": "prometheus",
@@ -917,7 +920,7 @@
             "title": "Actix-Web Worker - Average Response Time per Endpoint (\u00b5s)",
             "targets": [
                 {
-                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-worker-actix\", http_route=\"/health\"}[1m])) / sum(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-worker-actix\", http_route=\"/health\"}[1m])) * 1000000",
+                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-worker-actix\", http_route=\"/health\"}[1m])) / sum(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-worker-actix\", http_route=\"/health\"}[1m]))",
                     "legendFormat": "/health",
                     "datasource": {
                         "type": "prometheus",
@@ -925,7 +928,7 @@
                     }
                 },
                 {
-                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-worker-actix\", http_route=\"/work\"}[1m])) / sum(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-worker-actix\", http_route=\"/work\"}[1m])) * 1000000",
+                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-worker-actix\", http_route=\"/work\"}[1m])) / sum(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-worker-actix\", http_route=\"/work\"}[1m]))",
                     "legendFormat": "/work",
                     "datasource": {
                         "type": "prometheus",
@@ -938,7 +941,7 @@
                     "color": {
                         "mode": "palette-classic"
                     },
-                    "unit": "\u00b5s",
+                    "unit": "suffix: ms",
                     "decimals": 2
                 }
             }
@@ -955,7 +958,7 @@
             "title": "Actix-Web Worker - Latency Percentiles (p50/p95/p99) - ms",
             "targets": [
                 {
-                    "expr": "histogram_quantile(0.5, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-worker-actix\"}[5m])) by (le, http_route)) * 1000",
+                    "expr": "histogram_quantile(0.5, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-worker-actix\"}[5m])) by (le, http_route))",
                     "legendFormat": "p50 - {{http_route}}",
                     "datasource": {
                         "type": "prometheus",
@@ -963,7 +966,7 @@
                     }
                 },
                 {
-                    "expr": "histogram_quantile(0.95, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-worker-actix\"}[5m])) by (le, http_route)) * 1000",
+                    "expr": "histogram_quantile(0.95, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-worker-actix\"}[5m])) by (le, http_route))",
                     "legendFormat": "p95 - {{http_route}}",
                     "datasource": {
                         "type": "prometheus",
@@ -971,7 +974,7 @@
                     }
                 },
                 {
-                    "expr": "histogram_quantile(0.99, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-worker-actix\"}[5m])) by (le, http_route)) * 1000",
+                    "expr": "histogram_quantile(0.99, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-worker-actix\"}[5m])) by (le, http_route))",
                     "legendFormat": "p99 - {{http_route}}",
                     "datasource": {
                         "type": "prometheus",
@@ -984,7 +987,7 @@
                     "color": {
                         "mode": "palette-classic"
                     },
-                    "unit": "ms",
+                    "unit": "suffix: ms",
                     "decimals": 2
                 }
             }
@@ -1001,7 +1004,7 @@
             "title": "Actix-Web Worker - Error Rate",
             "targets": [
                 {
-                    "expr": "sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-actix\", http_status_code!~\"2..\"}[5m])) / sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-actix\"}[5m]))",
+                    "expr": "(sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-actix\", http_status_code!~\"2..\"}[5m])) / sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-actix\"}[5m]))) or vector(0)",
                     "legendFormat": "error_rate",
                     "datasource": {
                         "type": "prometheus",
@@ -1113,10 +1116,11 @@
                 "h": 4
             },
             "type": "timeseries",
-            "title": "Axum Worker - Average Response Time per Endpoint (\u00b5s)",
+            "title": "Axum Worker - Avg request duration (ms)",
+            "description": "Per-request duration (GET /health, GET /work). Values in ms as exported.",
             "targets": [
                 {
-                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-worker-axum\", http_route=\"/health\"}[1m])) / sum(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-worker-axum\", http_route=\"/health\"}[1m])) * 1000000",
+                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-worker-axum\", http_route=\"/health\"}[1m])) / sum(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-worker-axum\", http_route=\"/health\"}[1m]))",
                     "legendFormat": "/health",
                     "datasource": {
                         "type": "prometheus",
@@ -1124,7 +1128,7 @@
                     }
                 },
                 {
-                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-worker-axum\", http_route=\"/work\"}[1m])) / sum(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-worker-axum\", http_route=\"/work\"}[1m])) * 1000000",
+                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-worker-axum\", http_route=\"/work\"}[1m])) / sum(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-worker-axum\", http_route=\"/work\"}[1m]))",
                     "legendFormat": "/work",
                     "datasource": {
                         "type": "prometheus",
@@ -1137,7 +1141,7 @@
                     "color": {
                         "mode": "palette-classic"
                     },
-                    "unit": "\u00b5s",
+                    "unit": "suffix: ms",
                     "decimals": 2
                 }
             }
@@ -1151,10 +1155,10 @@
                 "h": 8
             },
             "type": "timeseries",
-            "title": "Axum Worker - Latency Percentiles (p50/p95/p99) - ms",
+            "title": "Axum Worker - Request duration percentiles (p50/p95/p99) ms",
             "targets": [
                 {
-                    "expr": "histogram_quantile(0.5, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-worker-axum\"}[5m])) by (le, http_route)) * 1000",
+                    "expr": "histogram_quantile(0.5, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-worker-axum\"}[5m])) by (le, http_route))",
                     "legendFormat": "p50 - {{http_route}}",
                     "datasource": {
                         "type": "prometheus",
@@ -1162,7 +1166,7 @@
                     }
                 },
                 {
-                    "expr": "histogram_quantile(0.95, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-worker-axum\"}[5m])) by (le, http_route)) * 1000",
+                    "expr": "histogram_quantile(0.95, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-worker-axum\"}[5m])) by (le, http_route))",
                     "legendFormat": "p95 - {{http_route}}",
                     "datasource": {
                         "type": "prometheus",
@@ -1170,7 +1174,7 @@
                     }
                 },
                 {
-                    "expr": "histogram_quantile(0.99, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-worker-axum\"}[5m])) by (le, http_route)) * 1000",
+                    "expr": "histogram_quantile(0.99, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-worker-axum\"}[5m])) by (le, http_route))",
                     "legendFormat": "p99 - {{http_route}}",
                     "datasource": {
                         "type": "prometheus",
@@ -1183,7 +1187,7 @@
                     "color": {
                         "mode": "palette-classic"
                     },
-                    "unit": "ms",
+                    "unit": "suffix: ms",
                     "decimals": 2
                 }
             }
@@ -1200,7 +1204,7 @@
             "title": "Axum Worker - Error Rate",
             "targets": [
                 {
-                    "expr": "sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-axum\", http_status_code!~\"2..\"}[5m])) / sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-axum\"}[5m]))",
+                    "expr": "(sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-axum\", http_status_code!~\"2..\"}[5m])) / sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-axum\"}[5m]))) or vector(0)",
                     "legendFormat": "error_rate",
                     "datasource": {
                         "type": "prometheus",
@@ -1312,10 +1316,11 @@
                 "h": 4
             },
             "type": "timeseries",
-            "title": "Hyper Worker - Average Response Time per Endpoint (\u00b5s)",
+            "title": "Hyper Worker - Avg request duration (ms)",
+            "description": "Per-request duration (GET /health, GET /work). Values in ms as exported.",
             "targets": [
                 {
-                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-worker-hyper\", http_route=\"/health\"}[1m])) / sum(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-worker-hyper\", http_route=\"/health\"}[1m])) * 1000000",
+                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-worker-hyper\", http_route=\"/health\"}[1m])) / sum(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-worker-hyper\", http_route=\"/health\"}[1m]))",
                     "legendFormat": "/health",
                     "datasource": {
                         "type": "prometheus",
@@ -1323,7 +1328,7 @@
                     }
                 },
                 {
-                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-worker-hyper\", http_route=\"/work\"}[1m])) / sum(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-worker-hyper\", http_route=\"/work\"}[1m])) * 1000000",
+                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-worker-hyper\", http_route=\"/work\"}[1m])) / sum(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-worker-hyper\", http_route=\"/work\"}[1m]))",
                     "legendFormat": "/work",
                     "datasource": {
                         "type": "prometheus",
@@ -1336,7 +1341,7 @@
                     "color": {
                         "mode": "palette-classic"
                     },
-                    "unit": "\u00b5s",
+                    "unit": "suffix: ms",
                     "decimals": 2
                 }
             }
@@ -1350,10 +1355,10 @@
                 "h": 8
             },
             "type": "timeseries",
-            "title": "Hyper Worker - Latency Percentiles (p50/p95/p99) - ms",
+            "title": "Hyper Worker - Request duration percentiles (p50/p95/p99) ms",
             "targets": [
                 {
-                    "expr": "histogram_quantile(0.5, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-worker-hyper\"}[5m])) by (le, http_route)) * 1000",
+                    "expr": "histogram_quantile(0.5, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-worker-hyper\"}[5m])) by (le, http_route))",
                     "legendFormat": "p50 - {{http_route}}",
                     "datasource": {
                         "type": "prometheus",
@@ -1361,7 +1366,7 @@
                     }
                 },
                 {
-                    "expr": "histogram_quantile(0.95, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-worker-hyper\"}[5m])) by (le, http_route)) * 1000",
+                    "expr": "histogram_quantile(0.95, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-worker-hyper\"}[5m])) by (le, http_route))",
                     "legendFormat": "p95 - {{http_route}}",
                     "datasource": {
                         "type": "prometheus",
@@ -1369,7 +1374,7 @@
                     }
                 },
                 {
-                    "expr": "histogram_quantile(0.99, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-worker-hyper\"}[5m])) by (le, http_route)) * 1000",
+                    "expr": "histogram_quantile(0.99, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-worker-hyper\"}[5m])) by (le, http_route))",
                     "legendFormat": "p99 - {{http_route}}",
                     "datasource": {
                         "type": "prometheus",
@@ -1382,7 +1387,7 @@
                     "color": {
                         "mode": "palette-classic"
                     },
-                    "unit": "ms",
+                    "unit": "suffix: ms",
                     "decimals": 2
                 }
             }
@@ -1399,7 +1404,7 @@
             "title": "Hyper Worker - Error Rate",
             "targets": [
                 {
-                    "expr": "sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-hyper\", http_status_code!~\"2..\"}[5m])) / sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-hyper\"}[5m]))",
+                    "expr": "(sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-hyper\", http_status_code!~\"2..\"}[5m])) / sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-hyper\"}[5m]))) or vector(0)",
                     "legendFormat": "error_rate",
                     "datasource": {
                         "type": "prometheus",
@@ -1511,10 +1516,11 @@
                 "h": 4
             },
             "type": "timeseries",
-            "title": "Rocket Worker - Average Response Time per Endpoint (\u00b5s)",
+            "title": "Rocket Worker - Avg request duration (ms)",
+            "description": "Per-request duration (GET /health, GET /work). Values in ms as exported.",
             "targets": [
                 {
-                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-worker-rocket\", http_route=\"/health\"}[1m])) / sum(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-worker-rocket\", http_route=\"/health\"}[1m])) * 1000000",
+                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-worker-rocket\", http_route=\"/health\"}[1m])) / sum(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-worker-rocket\", http_route=\"/health\"}[1m]))",
                     "legendFormat": "/health",
                     "datasource": {
                         "type": "prometheus",
@@ -1522,7 +1528,7 @@
                     }
                 },
                 {
-                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-worker-rocket\", http_route=\"/work\"}[1m])) / sum(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-worker-rocket\", http_route=\"/work\"}[1m])) * 1000000",
+                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=\"lemonade-worker-rocket\", http_route=\"/work\"}[1m])) / sum(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=\"lemonade-worker-rocket\", http_route=\"/work\"}[1m]))",
                     "legendFormat": "/work",
                     "datasource": {
                         "type": "prometheus",
@@ -1535,7 +1541,7 @@
                     "color": {
                         "mode": "palette-classic"
                     },
-                    "unit": "\u00b5s",
+                    "unit": "suffix: ms",
                     "decimals": 2
                 }
             }
@@ -1549,10 +1555,10 @@
                 "h": 8
             },
             "type": "timeseries",
-            "title": "Rocket Worker - Latency Percentiles (p50/p95/p99) - ms",
+            "title": "Rocket Worker - Request duration percentiles (p50/p95/p99) ms",
             "targets": [
                 {
-                    "expr": "histogram_quantile(0.5, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-worker-rocket\"}[5m])) by (le, http_route)) * 1000",
+                    "expr": "histogram_quantile(0.5, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-worker-rocket\"}[5m])) by (le, http_route))",
                     "legendFormat": "p50 - {{http_route}}",
                     "datasource": {
                         "type": "prometheus",
@@ -1560,7 +1566,7 @@
                     }
                 },
                 {
-                    "expr": "histogram_quantile(0.95, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-worker-rocket\"}[5m])) by (le, http_route)) * 1000",
+                    "expr": "histogram_quantile(0.95, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-worker-rocket\"}[5m])) by (le, http_route))",
                     "legendFormat": "p95 - {{http_route}}",
                     "datasource": {
                         "type": "prometheus",
@@ -1568,7 +1574,7 @@
                     }
                 },
                 {
-                    "expr": "histogram_quantile(0.99, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-worker-rocket\"}[5m])) by (le, http_route)) * 1000",
+                    "expr": "histogram_quantile(0.99, sum(rate(lemonade_http_request_duration_seconds_bucket{otel_scope_name=\"lemonade-worker-rocket\"}[5m])) by (le, http_route))",
                     "legendFormat": "p99 - {{http_route}}",
                     "datasource": {
                         "type": "prometheus",
@@ -1581,7 +1587,7 @@
                     "color": {
                         "mode": "palette-classic"
                     },
-                    "unit": "ms",
+                    "unit": "suffix: ms",
                     "decimals": 2
                 }
             }
@@ -1598,7 +1604,7 @@
             "title": "Rocket Worker - Error Rate",
             "targets": [
                 {
-                    "expr": "sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-rocket\", http_status_code!~\"2..\"}[5m])) / sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-rocket\"}[5m]))",
+                    "expr": "(sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-rocket\", http_status_code!~\"2..\"}[5m])) / sum(rate(lemonade_http_requests_total{otel_scope_name=\"lemonade-worker-rocket\"}[5m]))) or vector(0)",
                     "legendFormat": "error_rate",
                     "datasource": {
                         "type": "prometheus",
@@ -1748,10 +1754,10 @@
                 "h": 4
             },
             "type": "stat",
-            "title": "All Services - Avg Response Time",
+            "title": "All Services - Avg /work response time (ms)",
             "targets": [
                 {
-                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum[1m])) / sum(rate(lemonade_http_request_duration_seconds_count[1m])) * 1000000",
+                    "expr": "sum(rate(lemonade_http_request_duration_seconds_sum{otel_scope_name=~\"lemonade-worker-.*\", http_route=\"/work\"}[1m])) / sum(rate(lemonade_http_request_duration_seconds_count{otel_scope_name=~\"lemonade-worker-.*\", http_route=\"/work\"}[1m]))",
                     "datasource": {
                         "type": "prometheus",
                         "uid": "PBFA97CFB590B2093"
@@ -1763,7 +1769,7 @@
                     "color": {
                         "mode": "palette-classic"
                     },
-                    "unit": "\u00b5s",
+                    "unit": "suffix: ms",
                     "decimals": 2
                 }
             }
