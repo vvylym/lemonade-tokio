@@ -11,10 +11,10 @@ documentation.workspace = true
 publish.workspace = true
 
 [dependencies]
-axum = "0.8.7"
+axum = "0.8"
 tokio = { workspace = true }
-tower = "0.5.2"
-tower-http = { version = "0.6.1", features = ["fs", "trace"] }
+tower = "0.5"
+tower-http = { version = "0.6", features = ["fs", "trace"] }
 
 # Workspace dependencies
 lemonade-service = { workspace = true }
