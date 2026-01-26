@@ -86,7 +86,7 @@ pub enum HealthStatus {
 /// # Examples
 ///
 /// ```no_run
-/// use lemonade_load_balancer::health::models::BackendFailureEvent;
+/// use lemonade_load_balancer::prelude::BackendFailureEvent;
 ///
 /// // Report connection refused
 /// let event = BackendFailureEvent::ConnectionRefused { backend_id: 0 };

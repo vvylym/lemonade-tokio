@@ -126,8 +126,8 @@ impl StrategyService for AdaptiveStrategy {
             .iter()
             .map(|backend| {
                 (
-                    *backend.id(),
-                    self.cache.get(*backend.id(), current_timestamp_ms),
+                    backend.id(),
+                    self.cache.get(backend.id(), current_timestamp_ms),
                 )
             })
             .collect();
@@ -283,7 +283,7 @@ mod tests {
             .expect("Failed to pick backend");
 
         // Then: single backend is returned (early exit optimization)
-        assert_eq!(backend.id(), &0u8);
+        assert_eq!(backend.id(), 0u8);
     }
 
     #[tokio::test]
@@ -330,7 +330,7 @@ mod tests {
             .expect("Failed to pick backend");
 
         // Then: a backend is selected
-        assert!(*backend.id() == 0 || *backend.id() == 1);
+        assert!(backend.id() == 0 || backend.id() == 1);
     }
 
     #[tokio::test]
@@ -364,7 +364,7 @@ mod tests {
 
         // Then: backend with better metrics (lower latency) is selected
         // Backend 0 should be selected due to lower latency
-        assert_eq!(backend.id(), &0u8);
+        assert_eq!(backend.id(), 0u8);
     }
 
     #[tokio::test]
@@ -396,6 +396,6 @@ mod tests {
             .expect("Failed to pick backend");
 
         // Then: backend with fewer connections is selected
-        assert_eq!(backend.id(), &0u8);
+        assert_eq!(backend.id(), 0u8);
     }
 }

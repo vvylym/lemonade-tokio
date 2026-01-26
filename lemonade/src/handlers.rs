@@ -76,5 +76,7 @@ pub async fn run_worker(
 pub async fn run_load_balancer(
     config_file: Option<PathBuf>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    lemonade_load_balancer::run(config_file).await
+    lemonade_load_balancer::run(config_file)
+        .await
+        .map_err(Into::into)
 }

@@ -50,7 +50,7 @@ pub struct Config {
 /// # Examples
 ///
 /// ```no_run
-/// use lemonade_load_balancer::config::models::ConfigEvent;
+/// use lemonade_load_balancer::prelude::ConfigEvent;
 /// use std::net::SocketAddr;
 ///
 /// // When config migrates successfully

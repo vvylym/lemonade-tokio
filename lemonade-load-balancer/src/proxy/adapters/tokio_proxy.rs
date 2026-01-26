@@ -271,7 +271,7 @@ impl ProxyService for TokioProxyService {
 
                             // Get backend from route table
                             let routing = ctx.routing_table();
-                            let backend = match routing.get(*backend_meta.id()) {
+                            let backend = match routing.get(backend_meta.id()) {
                                 Some(b) => b,
                                 None => {
                                     tracing::warn!("Backend {} not found in route table", backend_meta.id());

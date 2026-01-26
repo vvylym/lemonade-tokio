@@ -21,7 +21,7 @@ pub struct ProxyConfig {
 /// # Examples
 ///
 /// ```no_run
-/// use lemonade_load_balancer::proxy::models::ConnectionEvent;
+/// use lemonade_load_balancer::prelude::ConnectionEvent;
 ///
 /// // Report new connection opened
 /// let event = ConnectionEvent::Opened { backend_id: 0 };

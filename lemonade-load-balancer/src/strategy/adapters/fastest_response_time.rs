@@ -150,7 +150,7 @@ mod tests {
             .expect("Failed to pick backend");
 
         // Then: backend with lowest latency (backend 1) is selected
-        assert_eq!(backend.id(), &1u8);
+        assert_eq!(backend.id(), 1u8);
     }
 
     #[tokio::test]
@@ -170,7 +170,7 @@ mod tests {
             .expect("Failed to pick backend");
 
         // Then: a backend is selected as fallback (could be any backend with no metrics)
-        assert!(*backend.id() == 0 || *backend.id() == 1);
+        assert!(backend.id() == 0 || backend.id() == 1);
     }
 
     #[tokio::test]
@@ -206,7 +206,7 @@ mod tests {
             .expect("Failed to pick backend");
 
         // Then: backend with lowest latency among those with metrics (backend 1) is selected
-        assert_eq!(backend.id(), &1u8);
+        assert_eq!(backend.id(), 1u8);
     }
 
     #[tokio::test]
@@ -262,7 +262,7 @@ mod tests {
             .expect("Failed to pick backend");
 
         // Then: a backend is selected (tie-breaking behavior - first in iteration)
-        assert!(*backend.id() == 0 || *backend.id() == 1);
+        assert!(backend.id() == 0 || backend.id() == 1);
     }
 
     #[test]

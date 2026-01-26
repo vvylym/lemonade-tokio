@@ -165,11 +165,7 @@ impl Context {
             new_backends.push(Arc::new(Backend::new(config.clone())));
         }
 
-        // Create new route table
-        let new_route_table = RouteTable::default();
-        for backend in new_backends {
-            new_route_table.insert(backend);
-        }
+        let new_route_table = RouteTable::from_backends(new_backends);
 
         // Build updated strategy (backends are read from new route table via Context)
         let new_strategy = StrategyBuilder::new()
