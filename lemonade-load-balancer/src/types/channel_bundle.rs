@@ -1,5 +1,13 @@
 //! Channel Bundle module
 //!
+//! ## Take-once receiver contract
+//!
+//! The methods [`health_rx()`](Self::health_rx), [`metrics_rx()`](Self::metrics_rx),
+//! [`backend_failure_rx()`](Self::backend_failure_rx), and [`connection_rx()`](Self::connection_rx)
+//! must each be called **at most once** per `ChannelBundle`. Each returns the single consumer
+//! for that channel; a second call returns `None`. The receiver is the unique consumer for
+//! that channel and must be driven by exactly one task.
+//!
 use crate::prelude::*;
 use std::sync::Mutex;
 

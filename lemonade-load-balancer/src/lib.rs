@@ -1,5 +1,13 @@
 //! Lemonade Load Balancer Library
 //!
+//! ## Ports and adapters
+//!
+//! The crate uses a ports-and-adapters (hexagonal) layout. **Ports** are traits defined in
+//! `*/port.rs`: `ConfigService`, `HealthService`, `MetricsService`, `ProxyService`, and
+//! `StrategyService`. **Adapters** are concrete implementations under `*/impls/` (config) or
+//! `*/adapters/` (health, metrics, proxy, strategy). The [`App`] composes these via a shared
+//! [`Context`](crate::types::context::Context), which holds config, route table, strategy, and
+//! channels used by all services.
 
 pub(crate) mod app;
 pub(crate) mod config;

@@ -3,7 +3,7 @@
 //! Provides methods to load configuration from files or environment variables
 use crate::prelude::*;
 use crate::strategy::error::StrategyError;
-use std::path::PathBuf;
+use std::path::Path;
 use std::time::Duration;
 
 use constants::*;
@@ -173,6 +173,7 @@ impl ConfigBuilder {
             health: HealthConfig {
                 interval: Duration::from_millis(health_interval_ms),
                 timeout: Duration::from_millis(health_timeout_ms),
+                max_connections_before_skip_health_check: None,
             },
             metrics: MetricsConfig {
                 interval: Duration::from_millis(metrics_interval_ms),
@@ -183,15 +184,15 @@ impl ConfigBuilder {
         })
     }
 
-    /// Load configuration from a file (supports JSON and TOML)
-    pub fn from_file(path: Option<impl Into<PathBuf>>) -> Result<Config, ConfigError> {
-        if let Some(path) = path {
-            let path = path.into();
+    /// Load configuration from a file (supports JSON, TOML, YAML)
+    pub fn from_file(path: Option<impl AsRef<Path>>) -> Result<Config, ConfigError> {
+        if let Some(p) = path {
+            let path = p.as_ref();
             if !path.exists() {
-                return Err(ConfigError::FileNotFound(path));
+                return Err(ConfigError::FileNotFound(path.to_path_buf()));
             }
 
-            let content = std::fs::read_to_string(&path)?;
+            let content = std::fs::read_to_string(path)?;
             let extension =
                 path.extension()
                     .and_then(|ext| ext.to_str())

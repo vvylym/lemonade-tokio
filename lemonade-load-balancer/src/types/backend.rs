@@ -96,6 +96,10 @@ impl Backend {
 
     /// Decrement active connection count
     pub fn decrement_connection(&self) {
+        debug_assert!(
+            self.active_connections.load(Ordering::Relaxed) > 0,
+            "decrement_connection called with 0 active connections"
+        );
         self.active_connections.fetch_sub(1, Ordering::Relaxed);
     }
 

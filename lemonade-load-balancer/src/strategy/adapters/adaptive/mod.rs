@@ -199,6 +199,7 @@ mod tests {
             health: HealthConfig {
                 interval: Duration::from_secs(5),
                 timeout: Duration::from_secs(1),
+                max_connections_before_skip_health_check: None,
             },
             metrics: MetricsConfig {
                 interval: Duration::from_secs(10),

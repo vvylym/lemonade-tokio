@@ -3,6 +3,9 @@
 //! Shared context for load balancer services with encapsulation
 
 use crate::prelude::*;
+
+/// Poll interval (ms) while waiting for backend connections to drain during migration.
+const DRAIN_POLL_INTERVAL_MS: u64 = 100;
 pub use error::ContextError;
 use std::sync::Mutex;
 use tokio::sync::Notify;
@@ -14,6 +17,8 @@ pub struct Context {
     route_table: ArcSwap<RouteTable>,
     strategy: ArcSwap<Arc<dyn StrategyService>>,
     channels: Arc<ChannelBundle>,
+    /// Held only for short, synchronous critical sections during migrate. Never held across `.await`
+    /// to avoid blocking the async runtime.
     migration_lock: Mutex<()>,
     // Notify for connection drain waiting
     connection_notify: Arc<Notify>,
@@ -190,7 +195,7 @@ impl Context {
             }
 
             // Wait a bit before checking again
-            tokio::time::sleep(Duration::from_millis(100)).await;
+            tokio::time::sleep(Duration::from_millis(DRAIN_POLL_INTERVAL_MS)).await;
         }
 
         // Re-acquire lock for final updates

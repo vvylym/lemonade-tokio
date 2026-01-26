@@ -144,6 +144,7 @@ impl TokioProxyService {
         // Wait for both directions to complete
         let (bytes_sent, bytes_received) =
             tokio::join!(client_to_backend, backend_to_client);
+        // unwrap_or(0): a panic in a joined task yields no meaningful bytes; treating it as 0 is acceptable for metrics
         let bytes_sent = bytes_sent.unwrap_or(0);
         let bytes_received = bytes_received.unwrap_or(0);
         let duration_micros = connection_start.elapsed().as_micros() as u64;

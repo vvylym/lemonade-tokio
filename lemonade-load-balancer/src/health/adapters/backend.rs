@@ -71,8 +71,19 @@ impl HealthService for BackendHealthService {
         let routing = ctx.routing_table();
         let health_tx_clone = health_tx.clone();
         let timeout = initial_config.timeout;
+        let skip_limit = initial_config
+            .max_connections_before_skip_health_check
+            .unwrap_or(100);
         for backend in routing.all_backends() {
             let backend_id = backend.id();
+            if !backend.has_capacity_for_health_check(skip_limit) {
+                tracing::debug!(
+                    "Skipping initial health check for busy backend {} ({} active connections)",
+                    backend_id,
+                    backend.active_connections()
+                );
+                continue;
+            }
             let address = backend.address().clone();
 
             let check_start = std::time::Instant::now();
@@ -194,8 +205,8 @@ impl HealthService for BackendHealthService {
                         let address = backend.address();
 
                         // Skip if backend has high load (respect backend capacity)
-                        // Use a reasonable threshold (e.g., 100 connections) to avoid overloading
-                        if !backend.has_capacity_for_health_check(100) {
+                        let limit = config.max_connections_before_skip_health_check.unwrap_or(100);
+                        if !backend.has_capacity_for_health_check(limit) {
                             tracing::debug!(
                                 "Skipping health check for busy backend {} ({} active connections)",
                                 backend_id,
