@@ -211,7 +211,8 @@ impl ConfigBuilder {
                     Ok(config)
                 }
                 "yaml" | "yml" => {
-                    let config: Config = serde_yaml::from_str(&content)?;
+                    let mut config: Config = serde_yaml::from_str(&content)?;
+                    config.source = ConfigSource::File;
                     Ok(config)
                 }
                 _ => Err(ConfigError::UnsupportedFormat(
@@ -260,7 +261,7 @@ mod constants {
     pub const LB_HEALTH_INTERVAL_MS_ENV_KEY: &str = "LEMONADE_LB_HEALTH_INTERVAL_MS";
     pub const LB_HEALTH_TIMEOUT_MS_ENV_KEY: &str = "LEMONADE_LB_HEALTH_TIMEOUT_MS";
 
-    pub const LB_HEALTH_INTERVAL_MS_DEFAULT: u64 = 30000; // 10 seconds
+    pub const LB_HEALTH_INTERVAL_MS_DEFAULT: u64 = 30000; // 30 seconds
     pub const LB_HEALTH_TIMEOUT_MS_DEFAULT: u64 = 30000; // 30 seconds
 
     // Metrics config
