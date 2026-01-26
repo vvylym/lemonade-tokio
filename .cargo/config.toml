@@ -30,3 +30,6 @@ LEMONADE_BENCH_TIMEOUT_MS = "10000"
 # OpenTelemetry OTLP Configuration
 LEMONADE_OTLP_ENDPOINT = "http://localhost:4317"
 LEMONADE_OTLP_PROTOCOL = "grpc"
+
+# Lemonade Bench Address
+LEMONADE_BENCH_ADDRESS = "http://localhost:8080"

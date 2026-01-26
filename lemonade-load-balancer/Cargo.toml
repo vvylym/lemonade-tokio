@@ -21,10 +21,10 @@ tokio = { workspace = true }
 # External dependencies
 
 ## Atomic shared references
-arc-swap = "1.7.1"
+arc-swap = "1.8"
 
 ## Concurrent hash maps
-dashmap = "6.1.0"
+dashmap = "6.1"
 
 ## File watching
 notify = "8.2"
@@ -47,7 +47,7 @@ mockall = { workspace = true }
 proptest = { workspace = true }
 quickcheck = { workspace = true }
 rstest = { workspace = true }
-tempfile = "3.10"
+tempfile = "3.24"
 
 [lints]
 workspace = true

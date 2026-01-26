@@ -15,7 +15,7 @@ resolver = "3"
 # Serialization and deserialization
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-serde_yaml = "0.9"
+serde_yaml = "0.9.34"
 toml = "0.9"
 
 # Environment variables
@@ -28,14 +28,14 @@ thiserror = "2.0"
 async-trait = "0.1"
 
 # Async runtime
-tokio = { version = "1.48", features = ["full"] }
+tokio = { version = "1.49", features = ["full"] }
 
 # Tests
-mockall = "0.14.0"
+mockall = "0.14"
 proptest = "1.9"
 quickcheck = "1.0"
 rstest = "0.26"
-tempfile = "3.23"
+tempfile = "3.24"
 
 # CLI
 clap = { version = "4.5", features = ["derive"] }
@@ -46,14 +46,14 @@ lemonade-observability = { path = "lemonade-observability" }
 
 # Observability
 tracing = "0.1"
-tracing-opentelemetry = "0.32.0"
+tracing-opentelemetry = "0.32"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "registry", "fmt", "ansi", "json"] }
-opentelemetry = { version = "0.31.0", features = ["trace", "metrics", "logs"] }
-opentelemetry-otlp = { version = "0.31.0", features = ["trace", "metrics", "logs"] }
-opentelemetry_sdk = { version = "0.31.0", features = ["trace", "metrics", "logs", "rt-tokio"] }
-opentelemetry-semantic-conventions = "0.31.0"
-opentelemetry-stdout = "0.31.0"
-prometheus = "0.14.0"
+opentelemetry = { version = "0.31", features = ["trace", "metrics", "logs"] }
+opentelemetry-otlp = { version = "0.31", features = ["trace", "metrics", "logs"] }
+opentelemetry_sdk = { version = "0.31", features = ["trace", "metrics", "logs", "rt-tokio"] }
+opentelemetry-semantic-conventions = "0.31"
+opentelemetry-stdout = "0.31"
+prometheus = "0.14"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
@@ -64,9 +64,9 @@ authors = ["Guillaume Mpouli <gmpouli@gmail.com"]
 edition = "2024"
 readme = "README.md"
 license = "MIT"
-homepage = ""
-repository = ""
-documentation = ""
+homepage = "https://github.com/vvylym/lemonade-tokio"
+repository = "https://github.com/vvylym/lemonade-tokio.git"
+documentation = "https://github.com/vvylym/lemonade-tokio"
 publish = false
 
 # Profiles tuned for perf measurements and flamegraph support
