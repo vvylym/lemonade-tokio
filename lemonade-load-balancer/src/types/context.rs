@@ -33,15 +33,9 @@ impl Context {
         // Create route table from backend configs
         let route_table = ArcSwap::from_pointee(RouteTable::new(config.backends.clone()));
 
-        // Build strategy (convert BackendConfig to BackendMeta for compatibility)
-        let backend_metas: Vec<BackendMeta> = config
-            .backends
-            .iter()
-            .map(|c| BackendMeta::new(c.id, c.name.clone(), c.address.clone(), c.weight))
-            .collect();
+        // Build strategy (backends are read from route_table via Context at pick_backend time)
         let strategy = StrategyBuilder::new()
             .with_strategy(config.strategy.clone())
-            .with_backends(backend_metas)
             .build()?;
 
         Ok(Self {
@@ -177,15 +171,9 @@ impl Context {
             new_route_table.insert(backend);
         }
 
-        // Prepare strategy update (convert BackendConfig to BackendMeta)
-        let backend_metas: Vec<BackendMeta> = new_config
-            .backends
-            .iter()
-            .map(|c| BackendMeta::new(c.id, c.name.clone(), c.address.clone(), c.weight))
-            .collect();
+        // Build updated strategy (backends are read from new route table via Context)
         let new_strategy = StrategyBuilder::new()
             .with_strategy(new_config.strategy.clone())
-            .with_backends(backend_metas)
             .build()?;
 
         // Release lock before await (waiting for drain)

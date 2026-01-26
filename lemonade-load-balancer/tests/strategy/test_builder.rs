@@ -2,13 +2,12 @@
 //!
 //! Tests for the StrategyBuilder covering:
 //! - Construction (new, default)
-//! - Builder methods (with_strategy, with_backends)
+//! - Builder methods (with_strategy)
 //! - Building strategies (all strategy types)
 //! - Error handling (building without strategy)
 //! - Method chaining
 //! - Trait implementations (Debug)
 
-use super::super::common::fixtures::*;
 use lemonade_load_balancer::prelude::*;
 
 #[test]
@@ -21,23 +20,6 @@ fn strategy_builder_with_strategy_should_succeed() {
 
     // Then: builder can be used (verified by build)
     let result = builder.build();
-    assert!(result.is_ok());
-}
-
-#[test]
-fn strategy_builder_with_backends_should_succeed() {
-    // Given: a StrategyBuilder and backends
-    let builder = StrategyBuilder::new();
-    let backends = vec![
-        create_test_backend(1, None, Some(10u8)),
-        create_test_backend(2, None, Some(10u8)),
-    ];
-
-    // When: setting backends
-    let builder = builder.with_backends(backends);
-
-    // Then: builder can be used (backends are stored but not used in build)
-    let result = builder.with_strategy(Strategy::RoundRobin).build();
     assert!(result.is_ok());
 }
 
@@ -140,16 +122,12 @@ fn strategy_builder_build_without_strategy_should_fail() {
 #[test]
 fn strategy_builder_chaining_should_succeed() {
     // Given: a StrategyBuilder
-    // When: chaining methods
-    let builder = StrategyBuilder::new()
+    // When: chaining with_strategy then build (backends come from Context at runtime)
+    let result = StrategyBuilder::new()
         .with_strategy(Strategy::RoundRobin)
-        .with_backends(vec![
-            create_test_backend(1, None, Some(10u8)),
-            create_test_backend(2, None, Some(10u8)),
-        ]);
+        .build();
 
-    // Then: builder can be built
-    let result = builder.build();
+    // Then: builder builds successfully
     assert!(result.is_ok());
 }
 

@@ -3,11 +3,13 @@
 use crate::prelude::*;
 
 /// Strategy builder struct
+///
+/// Strategies get backends from [`Context::routing_table()`] at runtime when
+/// [`StrategyService::pick_backend`] is called; the builder only selects strategy type.
 #[derive(Debug, Default)]
 pub struct StrategyBuilder {
     /// Strategy
     strategy: Option<Strategy>,
-    backends: Vec<BackendMeta>,
 }
 
 impl StrategyBuilder {
@@ -19,12 +21,6 @@ impl StrategyBuilder {
     /// Set the strategy
     pub fn with_strategy(mut self, strategy: Strategy) -> Self {
         self.strategy = Some(strategy);
-        self
-    }
-
-    /// Set the backends
-    pub fn with_backends(mut self, backends: Vec<BackendMeta>) -> Self {
-        self.backends = backends;
         self
     }
 
