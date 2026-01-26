@@ -17,7 +17,7 @@ fn test_new_with_valid_inputs() {
         Some(10u8),
     );
 
-    assert_eq!(meta.id(), &1u8);
+    assert_eq!(meta.id(), 1u8);
     assert_eq!(meta.name(), Some(&"backend-1".to_string()));
     assert_eq!(meta.weight(), Some(10u8));
 }
@@ -40,7 +40,7 @@ fn test_new_with_optional_fields(
 
 #[rstest]
 fn test_getters(#[from(create_test_backend)] backend: BackendMeta) {
-    assert!(*backend.id() < 255);
+    assert!(backend.id() < 255);
     // Address should contain port >= 8080
     assert!(
         backend.address().as_str().contains(":808")
@@ -181,7 +181,7 @@ fn test_backend_meta_with_backend_address() {
     let addr_str = "192.168.0.1:9000";
     let backend_addr = BackendAddress::parse(addr_str).expect("Failed to parse");
     let meta = BackendMeta::new(10u8, Some("addr-backend"), backend_addr, Some(20u8));
-    assert_eq!(meta.id(), &10u8);
+    assert_eq!(meta.id(), 10u8);
     assert_eq!(meta.name(), Some(&"addr-backend".to_string()));
     assert_eq!(meta.weight(), Some(20u8));
 }

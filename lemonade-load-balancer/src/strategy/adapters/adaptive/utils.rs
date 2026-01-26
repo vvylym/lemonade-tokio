@@ -263,7 +263,7 @@ pub fn compute_all_backend_scores(
         .iter()
         .enumerate()
         .map(|(backend_index, backend)| {
-            let backend_id = *backend.id();
+            let backend_id = backend.id();
 
             // Get actual Backend from routing table to access connection count and metrics
             let backend_connection_count = scoring_context

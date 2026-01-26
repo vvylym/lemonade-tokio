@@ -54,7 +54,7 @@ pub fn assert_backend_selected(
     let backend = result.expect("Failed to get backend");
     assert_eq!(
         backend.id(),
-        &expected_id,
+        expected_id,
         "Expected backend ID {} but got {}",
         expected_id,
         backend.id()

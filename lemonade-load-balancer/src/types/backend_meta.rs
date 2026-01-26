@@ -71,8 +71,8 @@ impl BackendMeta {
     }
 
     /// Get the backend id
-    pub fn id(&self) -> &BackendId {
-        &self.id
+    pub fn id(&self) -> BackendId {
+        self.id
     }
 
     /// Get the backend name

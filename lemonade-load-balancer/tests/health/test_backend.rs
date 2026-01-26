@@ -13,6 +13,7 @@ async fn backend_health_service_new_should_succeed() {
     let config = HealthConfig {
         interval: Duration::from_millis(1),
         timeout: Duration::from_millis(1),
+        max_connections_before_skip_health_check: None,
     };
 
     // When: creating BackendHealthService
@@ -28,6 +29,7 @@ async fn backend_health_service_check_health_performs_health_checks_should_succe
     let config = HealthConfig {
         interval: Duration::from_millis(10),
         timeout: Duration::from_millis(100),
+        max_connections_before_skip_health_check: None,
     };
     let service = Arc::new(
         BackendHealthService::new(Arc::new(ArcSwap::from_pointee(config)))
@@ -72,6 +74,7 @@ async fn backend_health_service_healthy_backend_updates_state_should_succeed() {
     let config = HealthConfig {
         interval: Duration::from_millis(10),
         timeout: Duration::from_millis(100),
+        max_connections_before_skip_health_check: None,
     };
     let service = Arc::new(
         BackendHealthService::new(Arc::new(ArcSwap::from_pointee(config)))
@@ -128,6 +131,7 @@ async fn backend_health_service_respects_backend_load_should_succeed() {
     let config = HealthConfig {
         interval: Duration::from_millis(10),
         timeout: Duration::from_millis(100),
+        max_connections_before_skip_health_check: None,
     };
     let service = Arc::new(
         BackendHealthService::new(Arc::new(ArcSwap::from_pointee(config)))
@@ -171,11 +175,58 @@ async fn backend_health_service_respects_backend_load_should_succeed() {
 }
 
 #[tokio::test]
+async fn backend_health_service_uses_custom_skip_limit_should_skip_when_over() {
+    // Given: config with max_connections_before_skip_health_check: Some(50), backend with 60 connections
+    let config = HealthConfig {
+        interval: Duration::from_millis(10),
+        timeout: Duration::from_millis(100),
+        max_connections_before_skip_health_check: Some(50),
+    };
+    let service = Arc::new(
+        BackendHealthService::new(Arc::new(ArcSwap::from_pointee(config)))
+            .expect("Failed to create service"),
+    );
+
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+        .await
+        .expect("Failed to bind");
+    let server_addr = listener.local_addr().expect("Failed to get addr");
+    let backend = BackendMeta::new(0u8, Some("test"), server_addr, Some(10u8));
+    let ctx = create_test_context(vec![backend]);
+
+    let routing = ctx.routing_table();
+    if let Some(b) = routing.get(0) {
+        for _ in 0..60 {
+            b.increment_connection();
+        }
+        assert!(!b.has_capacity_for_health_check(50));
+    }
+
+    let service_clone = service.clone();
+    let ctx_clone = ctx.clone();
+    let health_handle =
+        tokio::spawn(async move { service_clone.check_health(ctx_clone).await });
+
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    let _ = ctx.channels().shutdown_tx().send(());
+    let _ = tokio::time::timeout(Duration::from_millis(100), health_handle).await;
+
+    // If the adapter used the limit 50, it skipped the backend and never connected to our listener
+    let accept_result =
+        tokio::time::timeout(Duration::from_millis(50), listener.accept()).await;
+    assert!(
+        accept_result.is_err(),
+        "health check should have skipped busy backend"
+    );
+}
+
+#[tokio::test]
 async fn backend_health_service_handles_failure_events_should_succeed() {
     // Given: a service and context
     let config = HealthConfig {
         interval: Duration::from_millis(100),
         timeout: Duration::from_millis(100),
+        max_connections_before_skip_health_check: None,
     };
     let service = Arc::new(
         BackendHealthService::new(Arc::new(ArcSwap::from_pointee(config)))

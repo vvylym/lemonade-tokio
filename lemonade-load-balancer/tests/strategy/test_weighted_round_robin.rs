@@ -28,7 +28,7 @@ async fn weighted_round_robin_strategy_pick_backend_with_weights_should_succeed(
             .pick_backend(ctx.clone())
             .await
             .expect("Failed to pick backend");
-        selected.push(*backend.id());
+        selected.push(backend.id());
     }
 
     // With weights 3:1:2, backend 0 should be selected more
@@ -55,7 +55,7 @@ async fn weighted_round_robin_strategy_pick_backend_with_equal_weights_should_su
             .pick_backend(ctx.clone())
             .await
             .expect("Failed to pick backend");
-        selected.push(*backend.id());
+        selected.push(backend.id());
     }
 
     // Should be approximately equal
@@ -121,8 +121,8 @@ async fn weighted_round_robin_strategy_pick_backend_with_none_weights_should_suc
         .expect("Failed to pick backend");
 
     // None weight defaults to 1
-    assert!(*backend1.id() == 0 || *backend1.id() == 1);
-    assert!(*backend2.id() == 0 || *backend2.id() == 1);
+    assert!(backend1.id() == 0 || backend1.id() == 1);
+    assert!(backend2.id() == 0 || backend2.id() == 1);
 }
 
 #[test]

@@ -52,7 +52,7 @@ run-worker-actix:
 run-worker-axum:
     cargo run --release -- worker --framework axum --config config/worker-2.json
 
-# Run RHyperocket worker
+# Run Hyper worker
 run-worker-hyper:
     cargo run --release -- worker --framework hyper --config config/worker-3.yaml
 

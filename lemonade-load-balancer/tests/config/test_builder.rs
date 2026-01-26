@@ -160,6 +160,63 @@ fn config_builder_from_file_json_should_succeed() {
 }
 
 #[test]
+fn config_builder_from_file_yaml_should_succeed() {
+    let temp_dir = TempDir::new().unwrap();
+    let config_path = temp_dir.path().join("config.yaml");
+
+    let config_content = r#"
+strategy: round_robin
+
+runtime:
+  metrics_cap: 1500
+  health_cap: 150
+  drain_timeout_millis: 6000
+  background_timeout_millis: 3000
+  accept_timeout_millis: 2500
+  config_watch_interval_millis: 800
+
+proxy:
+  listen_address: "127.0.0.1:8000"
+  max_connections: 15000
+
+backends:
+  - id: 0
+    name: "yaml-backend-1"
+    address: "127.0.0.1:12001"
+    weight: 5
+  - id: 1
+    address: "127.0.0.1:12002"
+
+health:
+  interval: 15000
+  timeout: 3000
+
+metrics:
+  interval: 12000
+  timeout: 2500
+"#;
+
+    fs::write(&config_path, config_content).unwrap();
+
+    let result = ConfigBuilder::from_file(Some(config_path));
+    if let Err(ref e) = result {
+        eprintln!("YAML Config load error: {:?}", e);
+    }
+    assert!(
+        result.is_ok(),
+        "Should load YAML config: {:?}",
+        result.err()
+    );
+
+    let config = result.unwrap();
+    assert_eq!(config.source, ConfigSource::File);
+    assert_eq!(config.runtime.metrics_cap, 1500);
+    assert_eq!(config.strategy, Strategy::RoundRobin);
+    assert_eq!(config.backends.len(), 2);
+    assert_eq!(config.backends[0].name, Some("yaml-backend-1".to_string()));
+}
+
+#[test]
 fn config_builder_from_file_nonexistent_should_fail() {
     let result =
         ConfigBuilder::from_file(Some(PathBuf::from("/nonexistent/path/config.toml")));

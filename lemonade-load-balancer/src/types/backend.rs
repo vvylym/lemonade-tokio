@@ -96,6 +96,10 @@ impl Backend {
 
     /// Decrement active connection count
     pub fn decrement_connection(&self) {
+        debug_assert!(
+            self.active_connections.load(Ordering::Relaxed) > 0,
+            "decrement_connection called with 0 active connections"
+        );
         self.active_connections.fetch_sub(1, Ordering::Relaxed);
     }
 
@@ -192,13 +196,12 @@ impl Backend {
 /// # Examples
 ///
 /// ```
-/// use lemonade_load_balancer::types::backend::BackendConfig;
-/// use std::net::SocketAddr;
+/// use lemonade_load_balancer::prelude::{BackendAddress, BackendConfig};
 ///
 /// let config = BackendConfig {
 ///     id: 0,
 ///     name: Some("backend-1".to_string()),
-///     address: "127.0.0.1:8080".parse().unwrap(),
+///     address: BackendAddress::parse("127.0.0.1:8080").unwrap(),
 ///     weight: Some(10),
 /// };
 /// ```
@@ -217,7 +220,7 @@ pub struct BackendConfig {
 impl From<BackendMeta> for BackendConfig {
     fn from(meta: BackendMeta) -> Self {
         Self {
-            id: *meta.id(),
+            id: meta.id(),
             name: meta.name().cloned(),
             address: meta.address().clone(),
             weight: meta.weight(),

@@ -20,6 +20,12 @@ impl RouteTable {
         Self { backends: map }
     }
 
+    /// Create a route table from an iterator of backends.
+    pub fn from_backends(backends: impl IntoIterator<Item = Arc<Backend>>) -> Self {
+        let map = DashMap::from_iter(backends.into_iter().map(|b| (b.id(), b)));
+        Self { backends: map }
+    }
+
     /// Get backend by id
     pub fn get(&self, id: BackendId) -> Option<Arc<Backend>> {
         self.backends.get(&id).map(|entry| entry.value().clone())

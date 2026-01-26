@@ -12,6 +12,9 @@ pub struct HealthConfig {
     /// Health check timeout
     #[serde(with = "crate::config::serde_helpers")]
     pub timeout: Duration,
+    /// Skip health check when backend has at least this many active connections (avoids overloading busy backends). Default 100 when not set.
+    #[serde(default)]
+    pub max_connections_before_skip_health_check: Option<usize>,
 }
 
 /// Health event struct
@@ -86,7 +89,7 @@ pub enum HealthStatus {
 /// # Examples
 ///
 /// ```no_run
-/// use lemonade_load_balancer::health::models::BackendFailureEvent;
+/// use lemonade_load_balancer::prelude::BackendFailureEvent;
 ///
 /// // Report connection refused
 /// let event = BackendFailureEvent::ConnectionRefused { backend_id: 0 };

@@ -1,6 +1,6 @@
 # Lemonade Load Balancer Architecture
 
-This document provides a detailed overview of the Lemonade Load Balancer architecture, design decisions, and implementation details.
+Architecture, design decisions, and implementation details. To run locally, use the root [justfile](../justfile): e.g. `just run-lb` and `just run-worker-actix` (or other `just run-worker-*`).
 
 ## Table of Contents
 

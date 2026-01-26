@@ -28,7 +28,7 @@ async fn round_robin_strategy_pick_backend_with_multiple_backends_should_succeed
             .pick_backend(ctx.clone())
             .await
             .expect("Failed to pick backend");
-        picked_ids.push(*backend.id());
+        picked_ids.push(backend.id());
     }
 
     // Then: backends are selected in round-robin fashion
@@ -87,8 +87,8 @@ async fn round_robin_strategy_pick_backend_single_backend_should_succeed() {
         .await
         .expect("Failed to pick backend");
 
-    assert_eq!(backend1.id(), &0u8);
-    assert_eq!(backend2.id(), &0u8);
+    assert_eq!(backend1.id(), 0u8);
+    assert_eq!(backend2.id(), 0u8);
 }
 
 #[test]

@@ -1,5 +1,8 @@
 //! Adaptive strategy cache module
 //!
+//! Cache invalidation is **TTL-only**: entries expire after `ttl_ms` from
+//! `computed_at`. There is no version-based invalidation.
+
 use crate::prelude::*;
 
 /// Cached score for a backend
@@ -9,20 +12,14 @@ struct CachedScore {
     score: f64,
     /// Timestamp when score was computed (milliseconds)
     computed_at: u64,
-    /// Metrics version at computation time
-    metrics_version: u64,
-    /// Connections version at computation time
-    connections_version: u64,
 }
 
-/// Cache for adaptive strategy scores
+/// Cache for adaptive strategy scores.
+///
+/// Invalidation is TTL-only; entries expire after the configured TTL.
 pub struct AdaptiveCache {
     /// Cached scores per backend
     scores: DashMap<BackendId, CachedScore>,
-    /// Current metrics version (incremented on metrics update)
-    metrics_version: AtomicU64,
-    /// Current connections version (incremented on connection change)
-    connections_version: AtomicU64,
     /// Cache TTL in milliseconds
     ttl_ms: u64,
 }
@@ -39,31 +36,18 @@ impl AdaptiveCache {
     pub fn new(ttl_ms: u64) -> Self {
         Self {
             scores: DashMap::new(),
-            metrics_version: AtomicU64::new(0),
-            connections_version: AtomicU64::new(0),
             ttl_ms,
         }
     }
 
-    /// Get cached score for a backend if valid
+    /// Get cached score for a backend if still within TTL
     pub fn get(&self, backend_id: BackendId, now_ms: u64) -> Option<f64> {
         let cached = self.scores.get(&backend_id)?;
         let cached_value = cached.value();
 
-        // Check if cache is still valid
         let age = now_ms.saturating_sub(cached_value.computed_at);
         if age > self.ttl_ms {
-            return None; // Expired
-        }
-
-        // Check if versions match
-        let current_metrics_ver = self.metrics_version.load(Ordering::Relaxed);
-        let current_conn_ver = self.connections_version.load(Ordering::Relaxed);
-
-        if cached_value.metrics_version != current_metrics_ver
-            || cached_value.connections_version != current_conn_ver
-        {
-            return None; // Invalidated
+            return None;
         }
 
         Some(cached_value.score)
@@ -71,17 +55,13 @@ impl AdaptiveCache {
 
     /// Store a score in cache
     pub fn put(&self, backend_id: BackendId, score: f64, now_ms: u64) {
-        let metrics_ver = self.metrics_version.load(Ordering::Relaxed);
-        let conn_ver = self.connections_version.load(Ordering::Relaxed);
-
-        let cached = CachedScore {
-            score,
-            computed_at: now_ms,
-            metrics_version: metrics_ver,
-            connections_version: conn_ver,
-        };
-
-        self.scores.insert(backend_id, cached);
+        self.scores.insert(
+            backend_id,
+            CachedScore {
+                score,
+                computed_at: now_ms,
+            },
+        );
     }
 }
 

@@ -1,5 +1,13 @@
 //! Lemonade Load Balancer Library
 //!
+//! ## Ports and adapters
+//!
+//! The crate uses a ports-and-adapters (hexagonal) layout. **Ports** are traits defined in
+//! `*/port.rs`: `ConfigService`, `HealthService`, `MetricsService`, `ProxyService`, and
+//! `StrategyService`. **Adapters** are concrete implementations under `*/impls/` (config) or
+//! `*/adapters/` (health, metrics, proxy, strategy). The [`App`] composes these via a shared
+//! [`Context`](crate::types::context::Context), which holds config, route table, strategy, and
+//! channels used by all services.
 
 pub(crate) mod app;
 pub(crate) mod config;
@@ -23,9 +31,9 @@ use std::{path::PathBuf, sync::Arc};
 ///
 /// # Returns
 /// * `Ok(())` if the load balancer ran successfully
-/// * `Err(Box<dyn std::error::Error>)` if there was an error
+/// * `Err(crate::error::Error)` if there was an error
 #[tracing::instrument(skip_all, fields(service.name = "lemonade-load-balancer", config.file = ?config_file))]
-pub async fn run(config_file: Option<PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn run(config_file: Option<PathBuf>) -> crate::error::Result<()> {
     // Load config
     let config = ConfigBuilder::from_file(config_file.as_deref())?;
 
@@ -37,7 +45,8 @@ pub async fn run(config_file: Option<PathBuf>) -> Result<(), Box<dyn std::error:
         "lemonade-load-balancer",
         config.otlp_endpoint.as_deref(),
         config.otlp_protocol.as_deref(),
-    )?;
+    )
+    .map_err(|e| crate::error::Error::Other(e.to_string()))?;
 
     // Initialize metrics
     lemonade_observability::init_metrics(
@@ -46,7 +55,8 @@ pub async fn run(config_file: Option<PathBuf>) -> Result<(), Box<dyn std::error:
         "lemonade-load-balancer",
         config.otlp_endpoint.as_deref(),
         config.otlp_protocol.as_deref(),
-    )?;
+    )
+    .map_err(|e| crate::error::Error::Other(e.to_string()))?;
 
     // Create context from config (context-first initialization)
     let ctx = Arc::new(Context::new(config.clone())?);

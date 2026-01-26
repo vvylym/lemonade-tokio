@@ -45,7 +45,7 @@ async fn least_connections_strategy_pick_backend_with_least_connections_should_s
         .expect("Failed to pick backend");
 
     // Backend 1 has least connections (2)
-    assert_eq!(backend.id(), &1u8);
+    assert_eq!(backend.id(), 1u8);
 }
 
 #[tokio::test]
@@ -72,7 +72,7 @@ async fn least_connections_strategy_pick_backend_with_equal_connections_should_s
         .expect("Failed to pick backend");
 
     // Either backend can be selected (tie-breaking)
-    assert!(*backend.id() == 0 || *backend.id() == 1);
+    assert!(backend.id() == 0 || backend.id() == 1);
 }
 
 #[tokio::test]
@@ -110,7 +110,7 @@ async fn least_connections_strategy_pick_backend_with_zero_connections_should_su
         .expect("Failed to pick backend");
 
     // Either backend can be selected (both have zero connections)
-    assert!(*backend.id() == 0 || *backend.id() == 1);
+    assert!(backend.id() == 0 || backend.id() == 1);
 }
 
 #[test]

@@ -32,6 +32,29 @@ fn route_table_new_should_succeed() {
 }
 
 #[test]
+fn route_table_from_backends_produces_same_as_new() {
+    // Given: backend configs and equivalent Vec<Arc<Backend>>
+    let configs = vec![
+        backend_meta_to_config(create_test_backend_with_details(1, "b1", 8080)),
+        backend_meta_to_config(create_test_backend_with_details(2, "b2", 8081)),
+    ];
+    let from_new = RouteTable::new(configs);
+    let backends: Vec<Arc<Backend>> = from_new.all_backends();
+
+    // When: building via from_backends
+    let from_backends = RouteTable::from_backends(backends);
+
+    // Then: same len, same get() results
+    assert_eq!(from_backends.len(), from_new.len());
+    for id in from_new.backend_ids() {
+        assert_eq!(
+            from_backends.get(id).map(|b| b.id()),
+            from_new.get(id).map(|b| b.id())
+        );
+    }
+}
+
+#[test]
 fn route_table_new_with_empty_vec_should_succeed() {
     // Given: an empty vector of backend configs
     let backends = Vec::<BackendConfig>::new();

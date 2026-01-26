@@ -3,6 +3,9 @@
 //! Shared context for load balancer services with encapsulation
 
 use crate::prelude::*;
+
+/// Poll interval (ms) while waiting for backend connections to drain during migration.
+const DRAIN_POLL_INTERVAL_MS: u64 = 100;
 pub use error::ContextError;
 use std::sync::Mutex;
 use tokio::sync::Notify;
@@ -14,6 +17,8 @@ pub struct Context {
     route_table: ArcSwap<RouteTable>,
     strategy: ArcSwap<Arc<dyn StrategyService>>,
     channels: Arc<ChannelBundle>,
+    /// Held only for short, synchronous critical sections during migrate. Never held across `.await`
+    /// to avoid blocking the async runtime.
     migration_lock: Mutex<()>,
     // Notify for connection drain waiting
     connection_notify: Arc<Notify>,
@@ -33,15 +38,9 @@ impl Context {
         // Create route table from backend configs
         let route_table = ArcSwap::from_pointee(RouteTable::new(config.backends.clone()));
 
-        // Build strategy (convert BackendConfig to BackendMeta for compatibility)
-        let backend_metas: Vec<BackendMeta> = config
-            .backends
-            .iter()
-            .map(|c| BackendMeta::new(c.id, c.name.clone(), c.address.clone(), c.weight))
-            .collect();
+        // Build strategy (backends are read from route_table via Context at pick_backend time)
         let strategy = StrategyBuilder::new()
             .with_strategy(config.strategy.clone())
-            .with_backends(backend_metas)
             .build()?;
 
         Ok(Self {
@@ -171,21 +170,11 @@ impl Context {
             new_backends.push(Arc::new(Backend::new(config.clone())));
         }
 
-        // Create new route table
-        let new_route_table = RouteTable::default();
-        for backend in new_backends {
-            new_route_table.insert(backend);
-        }
+        let new_route_table = RouteTable::from_backends(new_backends);
 
-        // Prepare strategy update (convert BackendConfig to BackendMeta)
-        let backend_metas: Vec<BackendMeta> = new_config
-            .backends
-            .iter()
-            .map(|c| BackendMeta::new(c.id, c.name.clone(), c.address.clone(), c.weight))
-            .collect();
+        // Build updated strategy (backends are read from new route table via Context)
         let new_strategy = StrategyBuilder::new()
             .with_strategy(new_config.strategy.clone())
-            .with_backends(backend_metas)
             .build()?;
 
         // Release lock before await (waiting for drain)
@@ -206,7 +195,7 @@ impl Context {
             }
 
             // Wait a bit before checking again
-            tokio::time::sleep(Duration::from_millis(100)).await;
+            tokio::time::sleep(Duration::from_millis(DRAIN_POLL_INTERVAL_MS)).await;
         }
 
         // Re-acquire lock for final updates

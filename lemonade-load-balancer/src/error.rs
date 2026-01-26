@@ -11,6 +11,9 @@ pub enum Error {
     /// Config error
     #[error("config error: {0}")]
     Config(#[from] ConfigError),
+    /// Observability or other opaque error (e.g. tracing/metrics init)
+    #[error("{0}")]
+    Other(String),
     /// Health error
     #[error("health error: {0}")]
     Health(#[from] HealthError),
