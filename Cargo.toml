@@ -32,7 +32,7 @@ tokio = { version = "1.49", features = ["full"] }
 
 # Tests
 mockall = "0.14"
-proptest = "1.9"
+proptest = "1.10"
 quickcheck = "1.0"
 rstest = "0.26"
 tempfile = "3.24"
