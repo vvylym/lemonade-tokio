@@ -11,7 +11,7 @@ documentation.workspace = true
 publish.workspace = true
 
 [dependencies]
-actix-web = "4.12.1"
+actix-web = "4.13.0"
 actix-web-opentelemetry = "0.22.0"
 tokio = { workspace = true }
 opentelemetry = { workspace = true }
