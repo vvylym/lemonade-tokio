@@ -21,7 +21,7 @@ tokio = { workspace = true }
 # External dependencies
 
 ## Atomic shared references
-arc-swap = "1.8"
+arc-swap = "1.9"
 
 ## Concurrent hash maps
 dashmap = "6.1"
