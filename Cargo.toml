@@ -28,7 +28,7 @@ thiserror = "2.0"
 async-trait = "0.1"
 
 # Async runtime
-tokio = { version = "1.49", features = ["full"] }
+tokio = { version = "1.50", features = ["full"] }
 
 # Tests
 mockall = "0.14"
