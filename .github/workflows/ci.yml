@@ -51,7 +51,7 @@ jobs:
         run: cargo nextest run --workspace --all-features
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: test-results
           path: .nextest/test-results
@@ -65,10 +65,10 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov
-      - name: Generate coverage
-        run: cargo llvm-cov --workspace --all-targets --all-features --lcov --output-path .github/lcov.info
+      - name: Generate coverage (85% line minimum, scoped — see README)
+        run: COVERAGE_CI=1 ./scripts/coverage.sh
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           files: .github/lcov.info
           flags: unittests
@@ -100,7 +100,7 @@ jobs:
       - name: Build release binaries
         run: cargo build --release --workspace
       - name: Upload binaries
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: release-binaries
           path: target/release/lemonade
