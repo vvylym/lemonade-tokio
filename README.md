@@ -220,10 +220,24 @@ lemonade-tokio/
 
 ## Testing
 
-- **Test Coverage**: 85%+ across all crates
-- **Unit Tests**: Comprehensive coverage of all services and strategies
-- **Integration Tests**: End-to-end request flows, hot reload, failure scenarios
-- **Property Tests**: Strategy correctness and distribution fairness
+- **Unit tests**: Core load balancer, service layer, and observability
+- **Integration tests**: End-to-end request flows, hot reload, failure scenarios
+- **Property tests**: Strategy correctness and distribution fairness
+
+### Coverage gate
+
+CI enforces at least **85% line coverage** on a deliberate subset of the workspace (see `./scripts/coverage.sh`):
+
+- **`lemonade-worker-*` crates**: thin framework entrypoints (Actix, Axum, Hyper, Rocket) exercised manually or via examples rather than unit tests.
+- **`lemonade` binary**: CLI `main`, `lib`, and `handlers` wiring.
+- **`lemonade-service`**: tiny `lib.rs` / `error_response.rs` surfaces with no standalone tests.
+
+Run locally (requires [`cargo-llvm-cov`](https://github.com/taiki-e/cargo-llvm-cov)):
+
+```bash
+chmod +x scripts/coverage.sh   # once
+./scripts/coverage.sh
+```
 
 ## License
 
