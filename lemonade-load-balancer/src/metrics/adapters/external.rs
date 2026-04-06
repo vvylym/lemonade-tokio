@@ -32,8 +32,7 @@ impl ExternalMetricsService {
 #[async_trait]
 impl MetricsService for ExternalMetricsService {
     async fn collect_metrics(&self, ctx: Arc<Context>) {
-        // TODO: Implement periodic fetching from external sources (Prometheus/OTLP)
-        // For now, just wait for shutdown
+        // External Prometheus/OTLP polling is not implemented yet; wait for shutdown only.
         let mut shutdown_rx = ctx.channels().shutdown_rx();
         let _ = shutdown_rx.recv().await;
     }
