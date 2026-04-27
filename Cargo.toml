@@ -28,7 +28,7 @@ thiserror = "2.0"
 async-trait = "0.1"
 
 # Async runtime
-tokio = { version = "1.49", features = ["full"] }
+tokio = { version = "1.52", features = ["full"] }
 
 # Tests
 mockall = "0.14"
@@ -38,7 +38,7 @@ rstest = "0.26"
 tempfile = "3.24"
 
 # CLI
-clap = { version = "4.5", features = ["derive"] }
+clap = { version = "4.6", features = ["derive"] }
 
 # Service implementation
 lemonade-service = { path = "lemonade-service" }
