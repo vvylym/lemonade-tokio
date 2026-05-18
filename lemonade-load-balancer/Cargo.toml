@@ -24,7 +24,7 @@ tokio = { workspace = true }
 arc-swap = "1.8"
 
 ## Concurrent hash maps
-dashmap = "6.1"
+dashmap = "6.2"
 
 ## File watching
 notify = "8.2"
